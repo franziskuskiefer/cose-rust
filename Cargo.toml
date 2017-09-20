@@ -2,5 +2,9 @@
 name = "cose"
 version = "0.1.0"
 authors = ["Franziskus Kiefer <franziskuskiefer@gmail.com>"]
+description = "Library to use COSE (https://tools.ietf.org/html/rfc8152) in Rust"
+repository = "https://github.com/franziskuskiefer/cose-rust"
+keywords = ["cose", "jose", "cbor"]
+license = "MPL-2.0"
 
 [dependencies]
