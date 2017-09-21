@@ -1,4 +1,5 @@
 use std::io::{Cursor, Read, Seek, SeekFrom};
+use std::string::String;
 
 /// Convert num bytes to a u64
 fn read_int_from_bytes(bytes: &mut Cursor<&Vec<u8>>, num: usize) -> Result<u64, &'static str> {
@@ -16,12 +17,12 @@ fn read_int_from_bytes(bytes: &mut Cursor<&Vec<u8>>, num: usize) -> Result<u64, 
 
 /// Read an integer and return it as u64.
 fn read_int(bytes: &mut Cursor<&Vec<u8>>) -> Result<u64, &'static str> {
-    let first_value = bytes.get_ref()[0] & 0x1F;
+    let first_value = bytes.get_ref()[bytes.position() as usize] & 0x1F;
     bytes.seek(SeekFrom::Current(1)).unwrap();
     match first_value {
         24 => {
-            let result = bytes.get_ref()[1] as u64;
             // Manually advance cursor.
+            let result = bytes.get_ref()[bytes.position() as usize] as u64;
             bytes.seek(SeekFrom::Current(1)).unwrap();
             Ok(result)
         }
@@ -61,14 +62,23 @@ fn read_byte_string(bytes: &mut Cursor<&Vec<u8>>) -> Result<Vec<u8>, &'static st
 }
 
 fn read_utf8_string(bytes: &mut Cursor<&Vec<u8>>) -> Result<String, &'static str> {
-    read_byte_string(bytes);
-    Err("not implemented")
+    let byte_string = read_byte_string(bytes).unwrap();
+    Ok(String::from_utf8(byte_string).unwrap())
 }
 
-// #[allow(unused_variables)]
-// fn read_array(bytes: &Vec<u8>) -> Result<String, &'static str> {
-//     Err("not implemented")
-// }
+fn read_array(bytes: &mut Cursor<&Vec<u8>>) -> Result<String, &'static str> {
+    let num_items = read_int(bytes).unwrap();
+    let mut result = "[".to_string();
+    // Decode each of the num_items data items.
+    for item_num in 0..num_items {
+        result += &decode_item(bytes).unwrap();
+        if item_num < num_items - 1 {
+            result += &", ".to_string();
+        }
+    }
+    result += &"]".to_string();
+    Ok(result)
+}
 
 // #[allow(unused_variables)]
 // fn read_map(bytes: &Vec<u8>) -> Result<String, &'static str> {
@@ -80,19 +90,23 @@ fn to_hex_string(bytes: &[u8]) -> String {
     strs.join("")
 }
 
-/// Read the CBOR structure in bytes and return it as a string.
-pub fn decode_element(bytes: &Vec<u8>) -> Result<String, &'static str> {
-    let major_type = bytes[0] >> 5;
-    let mut byte_cursor = Cursor::new(bytes);
+fn decode_item(bytes: &mut Cursor<&Vec<u8>>) -> Result<String, &'static str> {
+    let major_type = bytes.get_ref()[bytes.position() as usize] >> 5;
     match major_type {
-        0 => return Ok(read_int(&mut byte_cursor).unwrap().to_string()),
-        1 => return Ok(read_signed_int(&mut byte_cursor).unwrap().to_string()),
-        2 => return Ok(to_hex_string(&read_byte_string(&mut byte_cursor).unwrap())),
-        3 => return read_utf8_string(&mut byte_cursor),
-        // 4 => return read_array(&bytes),
+        0 => return Ok(read_int(bytes).unwrap().to_string()),
+        1 => return Ok(read_signed_int(bytes).unwrap().to_string()),
+        2 => return Ok(to_hex_string(&read_byte_string(bytes).unwrap())),
+        3 => return read_utf8_string(bytes),
+        4 => return read_array(bytes),
         // 5 => return read_map(&bytes),
         6 => return Err("semantic tags are not implemented"),
         7 => return Err("major type 7 is not implemented"),
         _ => return Err("malformed first byte"),
     }
+}
+
+/// Read the CBOR structure in bytes and return it as a string.
+pub fn decode_element(bytes: &Vec<u8>) -> Result<String, &'static str> {
+    let mut byte_cursor = Cursor::new(bytes);
+    decode_item(&mut byte_cursor)
 }
