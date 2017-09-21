@@ -43,13 +43,8 @@ fn read_signed_int(bytes: &mut Cursor<&Vec<u8>>) -> Result<i64, &'static str> {
     Ok(result)
 }
 
-fn to_hex_string(bytes: &[u8]) -> String {
-    let strs: Vec<String> = bytes.iter().map(|b| format!("{:02X}", b)).collect();
-    strs.join("")
-}
-
 /// Read a byte string and return it as hex string.
-fn read_byte_string(bytes: &mut Cursor<&Vec<u8>>) -> Result<String, &'static str> {
+fn read_byte_string(bytes: &mut Cursor<&Vec<u8>>) -> Result<Vec<u8>, &'static str> {
     let length = read_int(bytes).unwrap();
     if length > usize::max_value() as u64 {
         return Err("Byte array is too large to allocate.");
@@ -62,13 +57,13 @@ fn read_byte_string(bytes: &mut Cursor<&Vec<u8>>) -> Result<String, &'static str
     if bytes.read(&mut byte_string).unwrap() != length {
         return Err("Couldn't read enough data for this byte string");
     }
-    Ok(to_hex_string(&byte_string))
+    Ok(byte_string)
 }
 
-// #[allow(unused_variables)]
-// fn read_utf8_string(bytes: &Vec<u8>) -> Result<String, &'static str> {
-//     Err("not implemented")
-// }
+fn read_utf8_string(bytes: &mut Cursor<&Vec<u8>>) -> Result<String, &'static str> {
+    read_byte_string(bytes);
+    Err("not implemented")
+}
 
 // #[allow(unused_variables)]
 // fn read_array(bytes: &Vec<u8>) -> Result<String, &'static str> {
@@ -80,6 +75,11 @@ fn read_byte_string(bytes: &mut Cursor<&Vec<u8>>) -> Result<String, &'static str
 //     Err("not implemented")
 // }
 
+fn to_hex_string(bytes: &[u8]) -> String {
+    let strs: Vec<String> = bytes.iter().map(|b| format!("{:02X}", b)).collect();
+    strs.join("")
+}
+
 /// Read the CBOR structure in bytes and return it as a string.
 pub fn decode_element(bytes: &Vec<u8>) -> Result<String, &'static str> {
     let major_type = bytes[0] >> 5;
@@ -87,8 +87,8 @@ pub fn decode_element(bytes: &Vec<u8>) -> Result<String, &'static str> {
     match major_type {
         0 => return Ok(read_int(&mut byte_cursor).unwrap().to_string()),
         1 => return Ok(read_signed_int(&mut byte_cursor).unwrap().to_string()),
-        2 => return read_byte_string(&mut byte_cursor),
-        // 3 => return read_utf8_string(&bytes),
+        2 => return Ok(to_hex_string(&read_byte_string(&mut byte_cursor).unwrap())),
+        3 => return read_utf8_string(&mut byte_cursor),
         // 4 => return read_array(&bytes),
         // 5 => return read_map(&bytes),
         6 => return Err("semantic tags are not implemented"),
