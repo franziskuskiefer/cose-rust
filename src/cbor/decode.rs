@@ -61,11 +61,13 @@ fn read_byte_string(bytes: &mut Cursor<&Vec<u8>>) -> Result<Vec<u8>, &'static st
     Ok(byte_string)
 }
 
+/// Read a UTF-8 string.
 fn read_utf8_string(bytes: &mut Cursor<&Vec<u8>>) -> Result<String, &'static str> {
     let byte_string = read_byte_string(bytes).unwrap();
     Ok(String::from_utf8(byte_string).unwrap())
 }
 
+/// Read an array of data items.
 fn read_array(bytes: &mut Cursor<&Vec<u8>>) -> Result<String, &'static str> {
     let num_items = read_int(bytes).unwrap();
     let mut result = "[".to_string();
@@ -80,10 +82,22 @@ fn read_array(bytes: &mut Cursor<&Vec<u8>>) -> Result<String, &'static str> {
     Ok(result)
 }
 
-// #[allow(unused_variables)]
-// fn read_map(bytes: &Vec<u8>) -> Result<String, &'static str> {
-//     Err("not implemented")
-// }
+/// Read a map.
+fn read_map(bytes: &mut Cursor<&Vec<u8>>) -> Result<String, &'static str> {
+    let num_items = read_int(bytes).unwrap();
+    let mut result = "{".to_string();
+    // Decode each of the num_items (key, data item) pairs.
+    for item_num in 0..num_items {
+        result += &decode_item(bytes).unwrap(); // key
+        result += &": ".to_string();
+        result += &decode_item(bytes).unwrap(); // value
+        if item_num < num_items - 1 {
+            result += &", ".to_string();
+        }
+    }
+    result += &"}".to_string();
+    Ok(result)
+}
 
 fn to_hex_string(bytes: &[u8]) -> String {
     let strs: Vec<String> = bytes.iter().map(|b| format!("{:02X}", b)).collect();
@@ -98,7 +112,7 @@ fn decode_item(bytes: &mut Cursor<&Vec<u8>>) -> Result<String, &'static str> {
         2 => return Ok(to_hex_string(&read_byte_string(bytes).unwrap())),
         3 => return read_utf8_string(bytes),
         4 => return read_array(bytes),
-        // 5 => return read_map(&bytes),
+        5 => return read_map(bytes),
         6 => return Err("semantic tags are not implemented"),
         7 => return Err("major type 7 is not implemented"),
         _ => return Err("malformed first byte"),

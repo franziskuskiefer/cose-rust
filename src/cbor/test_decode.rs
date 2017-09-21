@@ -220,3 +220,23 @@ fn test_arrays() {
     test_decoder(&bytes,
         "[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, [[[[5]]], [1234567890]]]");
 }
+
+#[test]
+fn test_maps() {
+    let bytes: Vec<u8> = vec![0xa0];
+    test_decoder(&bytes, "{}");
+
+    let bytes: Vec<u8> = vec![0xa2, 0x01, 0x02, 0x03, 0x04];
+    test_decoder(&bytes, "{1: 2, 3: 4}");
+
+    let bytes: Vec<u8> = vec![0xa2, 0x61, 0x61, 0x01, 0x61, 0x62, 0x82, 0x02, 0x03];
+    test_decoder(&bytes, "{a: 1, b: [2, 3]}");
+
+    let bytes: Vec<u8> = vec![0x82, 0x61, 0x61, 0xa1, 0x61, 0x62, 0x61, 0x63];
+    test_decoder(&bytes, "[a, {b: c}]");
+
+    let bytes: Vec<u8> = vec![0xa5, 0x61, 0x61, 0x61, 0x41, 0x61, 0x62, 0x61,
+                              0x42, 0x61, 0x63, 0x61, 0x43, 0x61, 0x64, 0x61,
+                              0x44, 0x61, 0x65, 0x61, 0x45];
+    test_decoder(&bytes, "{a: A, b: B, c: C, d: D, e: E}");
+}
