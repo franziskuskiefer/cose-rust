@@ -2,7 +2,7 @@ use std::io::{Cursor, Read, Seek, SeekFrom};
 use std::string::String;
 
 /// Convert num bytes to a u64
-fn read_int_from_bytes(bytes: &mut Cursor<&Vec<u8>>, num: usize) -> Result<u64, &'static str> {
+fn read_int_from_bytes(bytes: &mut Cursor<Vec<u8>>, num: usize) -> Result<u64, &'static str> {
     let mut x: Vec<u8> = vec![0; num];
     if bytes.read(&mut x).unwrap() != num {
         return Err("Couldn't read all bytes");
@@ -16,7 +16,7 @@ fn read_int_from_bytes(bytes: &mut Cursor<&Vec<u8>>, num: usize) -> Result<u64, 
 }
 
 /// Read an integer and return it as u64.
-fn read_int(bytes: &mut Cursor<&Vec<u8>>) -> Result<u64, &'static str> {
+fn read_int(bytes: &mut Cursor<Vec<u8>>) -> Result<u64, &'static str> {
     let first_value = bytes.get_ref()[bytes.position() as usize] & 0x1F;
     bytes.seek(SeekFrom::Current(1)).unwrap();
     match first_value {
@@ -29,13 +29,14 @@ fn read_int(bytes: &mut Cursor<&Vec<u8>>) -> Result<u64, &'static str> {
         25 => return Ok(read_int_from_bytes(bytes, 2).unwrap()),
         26 => return Ok(read_int_from_bytes(bytes, 4).unwrap()),
         27 => return Ok(read_int_from_bytes(bytes, 8).unwrap()),
-        28...31 => return Err("Not well formed"),
+        28...30 => return Err("Not well formed"),
+        31 => return Err("This can be valid but isn't implemented yet."),
         _ => return Ok(first_value as u64),
     }
 }
 
 /// Read a signed integer and return it as i64.
-fn read_signed_int(bytes: &mut Cursor<&Vec<u8>>) -> Result<i64, &'static str> {
+fn read_signed_int(bytes: &mut Cursor<Vec<u8>>) -> Result<i64, &'static str> {
     let uint = read_int(bytes).unwrap();
     if uint > i64::max_value() as u64 {
         return Err("Signed integer doesn't fit in a i64 (too large)");
@@ -45,7 +46,7 @@ fn read_signed_int(bytes: &mut Cursor<&Vec<u8>>) -> Result<i64, &'static str> {
 }
 
 /// Read a byte string and return it as hex string.
-fn read_byte_string(bytes: &mut Cursor<&Vec<u8>>) -> Result<Vec<u8>, &'static str> {
+fn read_byte_string(bytes: &mut Cursor<Vec<u8>>) -> Result<Vec<u8>, &'static str> {
     let length = read_int(bytes).unwrap();
     if length > usize::max_value() as u64 {
         return Err("Byte array is too large to allocate.");
@@ -62,13 +63,13 @@ fn read_byte_string(bytes: &mut Cursor<&Vec<u8>>) -> Result<Vec<u8>, &'static st
 }
 
 /// Read a UTF-8 string.
-fn read_utf8_string(bytes: &mut Cursor<&Vec<u8>>) -> Result<String, &'static str> {
+fn read_utf8_string(bytes: &mut Cursor<Vec<u8>>) -> Result<String, &'static str> {
     let byte_string = read_byte_string(bytes).unwrap();
     Ok(String::from_utf8(byte_string).unwrap())
 }
 
 /// Read an array of data items.
-fn read_array(bytes: &mut Cursor<&Vec<u8>>) -> Result<String, &'static str> {
+fn read_array(bytes: &mut Cursor<Vec<u8>>) -> Result<String, &'static str> {
     let num_items = read_int(bytes).unwrap();
     let mut result = "[".to_string();
     // Decode each of the num_items data items.
@@ -83,7 +84,7 @@ fn read_array(bytes: &mut Cursor<&Vec<u8>>) -> Result<String, &'static str> {
 }
 
 /// Read a map.
-fn read_map(bytes: &mut Cursor<&Vec<u8>>) -> Result<String, &'static str> {
+fn read_map(bytes: &mut Cursor<Vec<u8>>) -> Result<String, &'static str> {
     let num_items = read_int(bytes).unwrap();
     let mut result = "{".to_string();
     // Decode each of the num_items (key, data item) pairs.
@@ -104,7 +105,7 @@ fn to_hex_string(bytes: &[u8]) -> String {
     strs.join("")
 }
 
-fn decode_item(bytes: &mut Cursor<&Vec<u8>>) -> Result<String, &'static str> {
+fn decode_item(bytes: &mut Cursor<Vec<u8>>) -> Result<String, &'static str> {
     let major_type = bytes.get_ref()[bytes.position() as usize] >> 5;
     match major_type {
         0 => return Ok(read_int(bytes).unwrap().to_string()),
@@ -120,7 +121,7 @@ fn decode_item(bytes: &mut Cursor<&Vec<u8>>) -> Result<String, &'static str> {
 }
 
 /// Read the CBOR structure in bytes and return it as a string.
-pub fn decode_element(bytes: &Vec<u8>) -> Result<String, &'static str> {
+pub fn decode_element(bytes: Vec<u8>) -> Result<String, &'static str> {
     let mut byte_cursor = Cursor::new(bytes);
     decode_item(&mut byte_cursor)
 }
