@@ -87,16 +87,13 @@ fn read_utf8_string(decoder_cursor: &mut DecoderCursor) -> Result<String, &'stat
 fn read_array(decoder_cursor: &mut DecoderCursor) -> Result<String, &'static str> {
     let num_items = read_int(decoder_cursor).unwrap();
     let mut result = "[".to_string();
-    println!(" >>> LALALA 1");
     if decoder_cursor.indefinite.len() > 0 &&
         decoder_cursor.indefinite[decoder_cursor.indefinite.len() - 1]
     {
-        println!(" >>> LALALA 2");
         // In this case num_items is irrelevant.
         // We read until we find the break item (0xFF).
         let mut item = decode_item(decoder_cursor).unwrap();
         while item != "break" {
-            println!(" >>> LALALA 3");
             result += &item;
             result += &", ".to_string();
             item = decode_item(decoder_cursor).unwrap();
@@ -105,7 +102,6 @@ fn read_array(decoder_cursor: &mut DecoderCursor) -> Result<String, &'static str
         if result_len > 2 {
             result_len -= 2;
         }
-        println!(" >>> LALALA 4");
         result.truncate(result_len);
         decoder_cursor.indefinite.pop();
     } else {
