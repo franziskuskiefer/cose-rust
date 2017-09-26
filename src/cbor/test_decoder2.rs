@@ -17,6 +17,7 @@ fn test_integer(bytes: Vec<u8>, expected: u64) {
     }
 }
 
+#[allow(dead_code)]
 fn test_integer_all(bytes: Vec<u8>, expected_value: u64) {
     let expected = CBORObject { values: vec![CBORType::Integer(expected_value)] };
     test_decoder(bytes.clone(), expected);
@@ -291,4 +292,36 @@ fn test_byte_strings() {
                              0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
                              0xFF])] };
     test_decoder(bytes, expected);
+}
+
+#[test]
+fn test_maps() {
+    // {}
+    let bytes: Vec<u8> = vec![0xa0];
+    let expected = CBORObject { values: vec![CBORType::Map(vec![])] };
+    test_decoder(bytes, expected);
+
+    // {1: 2, 3: 4}
+    let bytes: Vec<u8> = vec![0xa2, 0x01, 0x02, 0x03, 0x04];
+    let expected = CBORObject { values: vec![
+        CBORType::Map(vec![
+            CBORMap{key: CBORType::Integer(1), value: CBORType::Integer(2)},
+            CBORMap{key: CBORType::Integer(3), value: CBORType::Integer(4)}])] };
+    test_decoder(bytes, expected);
+
+    // {"a": 1, "b": [2, 3]}
+    // let bytes: Vec<u8> = vec![0xa2, 0x61, 0x61, 0x01, 0x61, 0x62, 0x82, 0x02, 0x03];
+    // let expected = CBORObject { values: vec![
+    //     CBORType::Map(vec![
+    //         CBORMap{key: CBORType::Integer(1), value: CBORType::Integer(2)},
+    //         CBORMap{key: CBORType::Integer(3), value: CBORType::Integer(4)}])] };
+    // test_decoder(bytes, expected);
+
+    // let bytes: Vec<u8> = vec![0x82, 0x61, 0x61, 0xa1, 0x61, 0x62, 0x61, 0x63];
+    // test_decoder(bytes, "[a, {b: c}]");
+
+    // let bytes: Vec<u8> = vec![0xa5, 0x61, 0x61, 0x61, 0x41, 0x61, 0x62, 0x61,
+    //                           0x42, 0x61, 0x63, 0x61, 0x43, 0x61, 0x64, 0x61,
+    //                           0x44, 0x61, 0x65, 0x61, 0x45];
+    // test_decoder(bytes, "{a: A, b: B, c: C, d: D, e: E}");
 }

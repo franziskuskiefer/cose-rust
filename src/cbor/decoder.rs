@@ -121,6 +121,32 @@ impl DecoderCursor {
         Ok(())
     }
 
+    /// Read a map.
+    fn read_map(&mut self) -> Result<CBORType, &'static str> {
+        // XXX: check for duplicate keys.
+        let num_items = self.read_int().unwrap();
+        // Create a new array.
+        let mut map: Vec<CBORMap> = Vec::new();
+        // Decode each of the num_items (key, data item) pairs.
+        for item_num in 0..num_items {
+            let key_val = self.decode_item().unwrap();
+            let item_value = self.decode_item().unwrap();
+            let item = CBORMap {
+                key: key_val,
+                value: item_value
+            };
+            map.push(item);
+        }
+        Ok(CBORType::Map(map))
+    }
+
+    /// Read a map.
+    fn parse_map(&mut self) -> Result<(), &'static str> {
+        let map = self.read_map().unwrap();
+        self.decoded.values.push(map);
+        Ok(())
+    }
+
     /// Decodes the next item in DecoderCursor.
     fn decode_item(&mut self) -> Result<CBORType, &'static str> {
         let pos = self.cursor.position() as usize;
@@ -130,6 +156,7 @@ impl DecoderCursor {
             1 => return Ok(self.read_signed_int().unwrap()),
             2 => return Ok(self.read_byte_string().unwrap()),
             4 => return Ok(self.read_array().unwrap()),
+            5 => return Ok(self.read_map().unwrap()),
             6 => return Ok(CBORType::Tag(self.read_int().unwrap())),
             _ => return Err("Malformed first byte"),
         }
@@ -139,18 +166,9 @@ impl DecoderCursor {
 #[derive(Debug)]
 #[derive(Clone)]
 #[derive(PartialEq)]
-pub enum CoseMapKey {
-    Integer(u64),
-    SignedInteger(i64),
-    String(String),
-}
-
-#[derive(Debug)]
-#[derive(Clone)]
-#[derive(PartialEq)]
-pub struct CoseMap {
-    key: CoseMapKey,
-    value: CBORType,
+pub struct CBORMap {
+    pub key: CBORType,
+    pub value: CBORType,
 }
 
 #[derive(Debug)]
@@ -163,7 +181,7 @@ pub enum CBORType {
     Bytes(Vec<u8>),
     String(String),
     Array(Vec<CBORType>),
-    Map(Vec<CoseMap>),
+    Map(Vec<CBORMap>),
 }
 
 #[derive(Debug)]
@@ -189,6 +207,7 @@ fn decode_item(decoder_cursor: &mut DecoderCursor) -> Result<(), &'static str> {
         1 => decoder_cursor.parse_signed_int(),
         2 => decoder_cursor.parse_byte_string(),
         4 => decoder_cursor.parse_array(),
+        5 => decoder_cursor.parse_map(),
         6 => decoder_cursor.parse_int(true),
         _ => return Err("Malformed first byte"),
     }
@@ -248,13 +267,14 @@ pub fn decode_signature(bytes: Vec<u8>) -> Result<CoseSignatures, &'static str> 
     // };
     let mut result = CoseSignatures { values: Vec::new() };
     decode_item(&mut decoder_cursor).unwrap();
+    println!("cursor pos: {:?}", decoder_cursor.cursor.position());
     // This has to be as COSE_Sign object.
     if decoder_cursor.decoded.values.len() != 1 {
         return Err("This is not a COSE_Sign object");
     }
-    let val = &decoder_cursor.decoded.values[0];
+    let val = decoder_cursor.decoded.values[0].clone();
     match val {
-        &CBORType::Tag(val) => {
+        CBORType::Tag(val) => {
             if val != CoseType::COSESign as u64 {
                 return Err("This is not a COSE_Sign object");
             }
@@ -264,5 +284,6 @@ pub fn decode_signature(bytes: Vec<u8>) -> Result<CoseSignatures, &'static str> 
 
     // Now we know we have a COSE_Sign object.
     // The remaining data item has to be an array.
+    decode_item(&mut decoder_cursor).unwrap();
     Ok(result)
 }
