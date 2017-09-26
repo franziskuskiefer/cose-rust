@@ -6,7 +6,7 @@ use std::string::String;
 struct DecoderCursor {
     cursor: Cursor<Vec<u8>>,
     indefinite: Vec<bool>,
-    decoded: CoseObject,
+    decoded: CBORObject,
 }
 
 /// Convert num bytes to a u64
@@ -60,39 +60,41 @@ pub enum CoseMapKey {
 #[derive(Debug)]
 pub struct CoseMap {
     key: CoseMapKey,
-    value: CoseType
+    value: CBORType,
 }
 
 #[derive(Debug)]
-pub enum CoseType {
+pub enum CBORType {
     Integer(u64),
     SignedInteger(i64),
+    Tag(u64),
     Bytes(Vec<u8>),
     String(String),
-    Array(Vec<CoseType>),
-    Map(Vec<CoseMap>)
+    Array(Vec<CBORType>),
+    Map(Vec<CoseMap>),
 }
 
-impl PartialEq for CoseType {
-    fn eq(&self, other: &CoseType) -> bool {
+impl PartialEq for CBORType {
+    fn eq(&self, other: &CBORType) -> bool {
         let a = self;
         let b = other;
         match (a, b) {
-            (&CoseType::Integer(a), &CoseType::Integer(b)) => return a == b,
-            (&CoseType::SignedInteger(a), &CoseType::SignedInteger(b)) => return a == b,
+            (&CBORType::Integer(a), &CBORType::Integer(b)) => return a == b,
+            (&CBORType::Tag(a), &CBORType::Tag(b)) => return a == b,
+            (&CBORType::SignedInteger(a), &CBORType::SignedInteger(b)) => return a == b,
             // XXX: implement the rest.
-            _ => false
+            _ => false,
         }
     }
 }
 
 #[derive(Debug)]
-pub struct CoseObject {
-    pub values: Vec<CoseType>
+pub struct CBORObject {
+    pub values: Vec<CBORType>,
 }
 
-impl PartialEq for CoseObject {
-    fn eq(&self, other: &CoseObject) -> bool {
+impl PartialEq for CBORObject {
+    fn eq(&self, other: &CBORObject) -> bool {
         if self.values.len() != other.values.len() {
             return false;
         }
@@ -100,27 +102,96 @@ impl PartialEq for CoseObject {
     }
 }
 
-
+/// Decodes the next item in DecoderCursor.
 fn decode_item(decoder_cursor: &mut DecoderCursor) -> Result<(), &'static str> {
-    let major_type = decoder_cursor.cursor.get_ref()[decoder_cursor.cursor.position() as usize] >> 5;
+    let major_type = decoder_cursor.cursor.get_ref()[decoder_cursor.cursor.position() as usize] >>
+        5;
     match major_type {
         0 => {
             let int = read_int(decoder_cursor).unwrap();
-            decoder_cursor.decoded.values.push(CoseType::Integer(int));
+            decoder_cursor.decoded.values.push(CBORType::Integer(int));
             Ok(())
-        },
+        }
+        6 => {
+            let tag = read_int(decoder_cursor).unwrap();
+            decoder_cursor.decoded.values.push(CBORType::Tag(tag));
+            Ok(())
+        }
         _ => return Err("malformed first byte"),
     }
 }
 
 /// Read the CBOR structure in bytes and return it as a COSE object.
 #[allow(dead_code)]
-pub fn decode(bytes: Vec<u8>) -> Result<CoseObject, &'static str> {
+pub fn decode(bytes: Vec<u8>) -> Result<CBORObject, &'static str> {
     let mut decoder_cursor = DecoderCursor {
         cursor: Cursor::new(bytes),
         indefinite: Vec::new(),
-        decoded: CoseObject {values: Vec::new()},
+        decoded: CBORObject { values: Vec::new() },
     };
     decode_item(&mut decoder_cursor).unwrap();
     Ok(decoder_cursor.decoded)
+}
+
+// COSE verification
+// XXX: move out of here.
+
+#[derive(Debug)]
+pub enum CoseType {
+    COSESign = 98,
+}
+
+#[derive(Debug)]
+pub enum CoseSignatureType {
+    ES256,
+    ES384,
+    ES512,
+}
+
+#[derive(Debug)]
+pub struct CoseSignature {
+    pub signature_type: CoseSignatureType,
+    pub signature: Vec<u8>,
+    pub signer_cert: Vec<u8>,
+    pub certs: Vec<u8>,
+}
+
+#[derive(Debug)]
+pub struct CoseSignatures {
+    pub values: Vec<CoseSignature>,
+}
+
+pub fn decode_signature(bytes: Vec<u8>) -> Result<CoseSignatures, &'static str> {
+    let mut decoder_cursor = DecoderCursor {
+        cursor: Cursor::new(bytes),
+        indefinite: Vec::new(),
+        decoded: CBORObject { values: Vec::new() },
+    };
+    // let signature = CoseSignature {
+    //     signature_type: CoseSignatureType::ES256, // default value
+    //     signature: Vec::new(),
+    //     signer_cert: Vec::new(),
+    //     certs: Vec::new(),
+    // };
+    let mut result = CoseSignatures {
+        values: Vec::new(),
+    };
+    decode_item(&mut decoder_cursor).unwrap();
+    // This has to be as COSE_Sign object.
+    if decoder_cursor.decoded.values.len() != 1 {
+        return Err("This is not a COSE_Sign object");
+    }
+    let val = &decoder_cursor.decoded.values[0];
+    match val {
+        &CBORType::Tag(val) => {
+            if val != CoseType::COSESign as u64 {
+                return Err("This is not a COSE_Sign object");
+            }
+        },
+        _ => return Err("This is not a COSE_Sign object"),
+    }
+
+    // Now we know we have a COSE_Sign object.
+    // The remaining data item has to be an array.
+    Ok(result)
 }

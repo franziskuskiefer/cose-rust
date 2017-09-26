@@ -2,7 +2,7 @@ use cbor::decoder::*;
 
 // First test all the basic types
 #[allow(dead_code)]
-fn test_decoder(bytes: Vec<u8>, expected: CoseObject) {
+fn test_decoder(bytes: Vec<u8>, expected: CBORObject) {
     assert_eq!(decode(bytes).unwrap(), expected);
 }
 
@@ -11,14 +11,14 @@ fn test_integer(bytes: Vec<u8>, expected: u64) {
     let decoded = decode(bytes).unwrap();
     for val in decoded.values {
         match val {
-            CoseType::Integer(val) => assert_eq!(val, expected),
+            CBORType::Integer(val) => assert_eq!(val, expected),
             _ => assert_eq!(1, 0)
         }
     }
 }
 
 fn test_integer_all(bytes: Vec<u8>, expected_value: u64) {
-    let expected = CoseObject{values: vec![CoseType::Integer(expected_value)]};
+    let expected = CBORObject{values: vec![CBORType::Integer(expected_value)]};
     test_decoder(bytes.clone(), expected);
     test_integer(bytes, expected_value);
 }
@@ -57,4 +57,24 @@ fn test_integer_objects() {
 
     let bytes = vec![0x1b, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff];
     test_integer_all(bytes, 18446744073709551615);
+}
+
+#[allow(dead_code)]
+fn test_tag(bytes: Vec<u8>, expected: u64) {
+    let decoded = decode(bytes).unwrap();
+    for val in decoded.values {
+        match val {
+            CBORType::Tag(val) => assert_eq!(val, expected),
+            _ => assert_eq!(1, 0)
+        }
+    }
+}
+
+#[test]
+fn test_tagged_objects() {
+    let bytes: Vec<u8> = vec![0xD8, 0x62];
+    let expected_value:u64 = 0x62;
+    let expected = CBORObject{values: vec![CBORType::Tag(expected_value)]};
+    test_decoder(bytes.clone(), expected);
+    test_tag(bytes, expected_value);
 }
