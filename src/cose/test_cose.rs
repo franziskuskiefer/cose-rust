@@ -1,4 +1,4 @@
-use cbor::decoder::*;
+use cose::decoder::*;
 
 #[test]
 fn test_single_signature() {
