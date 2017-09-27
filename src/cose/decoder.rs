@@ -1,4 +1,4 @@
-pub use cbor::decoder::*;
+use cbor::decoder::*;
 use std::io::{Cursor};
 
 #[derive(Debug)]
@@ -68,13 +68,11 @@ pub fn decode_signature(bytes: Vec<u8>) -> Result<CoseSignatures, &'static str> 
     }
     let tmp = &decoder_cursor.decoded.values[1];
     let cose_object = unpack!(Array, tmp);
-    println!(">>>> cose_object: {:?}", cose_object[0]);
     if cose_object.len() < 4 {
         return Err("This is not a valid COSE signature object 2.");
     }
     let tmp = &cose_object[3];
     let signature_items = unpack!(Array, tmp);
-    println!(">>>> signature_item {:?}", signature_items);
 
     // Take the first signature.
     if signature_items.len() < 1 {
@@ -87,7 +85,6 @@ pub fn decode_signature(bytes: Vec<u8>) -> Result<CoseSignatures, &'static str> 
     }
     let tmp = &signature_item[0];
     let protected_signature_header = unpack!(Bytes, tmp).clone();
-    println!(">>>> protected_signature_header {:?}", protected_signature_header);
 
     // Parse the protected signature header.
     let mut header_cursor = DecoderCursor {
@@ -95,7 +92,6 @@ pub fn decode_signature(bytes: Vec<u8>) -> Result<CoseSignatures, &'static str> 
         decoded: CBORObject { values: Vec::new() },
     };
     decode_item(&mut header_cursor).unwrap();
-    println!(">>>> protected_signature_header {:?}", header_cursor.decoded.values);
     if header_cursor.decoded.values.len() < 1 {
         return Err("This is not a valid COSE signature object. Protected header is empty.");
     }
@@ -119,9 +115,8 @@ pub fn decode_signature(bytes: Vec<u8>) -> Result<CoseSignatures, &'static str> 
        key_id[0].key != CBORType::Integer(4) { // XXX: kid
         return Err("This is not a valid COSE signature object. No key ID given.");
     }
-    // XXX: This has to be a byte string in our scenario.
-    // XXX: Not used yet.
-    let key_id = key_id[0].value.clone();
+    let tmp = &key_id[0].value;
+    let key_id = unpack!(Bytes, tmp);
 
     // Read the signature bytes.
     let tmp = &signature_item[2];
@@ -130,7 +125,7 @@ pub fn decode_signature(bytes: Vec<u8>) -> Result<CoseSignatures, &'static str> 
     let signature = CoseSignature {
         signature_type: signature_algorithm,
         signature: signature_bytes,
-        signer_cert: Vec::new(),
+        signer_cert: key_id.clone(),
         certs: Vec::new(),
     };
     result.values.push(signature);

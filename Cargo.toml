@@ -8,3 +8,4 @@ keywords = ["cose", "jose", "cbor"]
 license = "MPL-2.0"
 
 [dependencies]
+scopeguard = "0.3"
