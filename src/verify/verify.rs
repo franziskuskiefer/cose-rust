@@ -28,12 +28,17 @@ impl SECItem {
         if data.len() > u32::max_value() as usize {
             return Err(VerifyError::InputTooLarge);
         }
-        Ok(SECItem { typ: SI_BUFFER, data: data.as_ptr(), len: data.len() as u32 })
+        Ok(SECItem {
+            typ: SI_BUFFER,
+            data: data.as_ptr(),
+            len: data.len() as u32,
+        })
     }
 }
 
 #[repr(C)]
-struct CkRsaPkcsPssParams { // Called CK_RSA_PKCS_PSS_PARAMS in NSS
+struct CkRsaPkcsPssParams {
+    // Called CK_RSA_PKCS_PSS_PARAMS in NSS
     hash_alg: CkMechanismType, // Called hashAlg in NSS
     mgf: CkRsaPkcsMgfType,
     s_len: raw::c_ulong, // Called sLen in NSS
@@ -72,21 +77,26 @@ enum SECKEYPublicKey {}
 const SHA256_LENGTH: usize = 32;
 
 // TODO: ugh this will probably have a platform-specific name...
-#[link(name="nss3")]
+#[link(name = "nss3")]
 extern "C" {
-    fn PK11_HashBuf(hashAlg: SECOidTag,
-                    out: *mut u8,
-                    data_in: *const u8, // called "in" in NSS
-                    len: raw::c_int) -> SECStatus;
-    fn PK11_VerifyWithMechanism(key: *const SECKEYPublicKey,
-                                mechanism: CkMechanismType,
-                                param: *const SECItem,
-                                sig: *const SECItem,
-                                hash: *const SECItem,
-                                wincx: *const raw::c_void) -> SECStatus;
+    fn PK11_HashBuf(
+        hashAlg: SECOidTag,
+        out: *mut u8,
+        data_in: *const u8, // called "in" in NSS
+        len: raw::c_int,
+    ) -> SECStatus;
+    fn PK11_VerifyWithMechanism(
+        key: *const SECKEYPublicKey,
+        mechanism: CkMechanismType,
+        param: *const SECItem,
+        sig: *const SECItem,
+        hash: *const SECItem,
+        wincx: *const raw::c_void,
+    ) -> SECStatus;
 
-    fn SECKEY_DecodeDERSubjectPublicKeyInfo(spkider: *const SECItem)
-       -> *const CERTSubjectPublicKeyInfo;
+    fn SECKEY_DecodeDERSubjectPublicKeyInfo(
+        spkider: *const SECItem,
+    ) -> *const CERTSubjectPublicKeyInfo;
     fn SECKEY_DestroySubjectPublicKeyInfo(spki: *const CERTSubjectPublicKeyInfo);
 
     fn SECKEY_ExtractPublicKey(spki: *const CERTSubjectPublicKeyInfo) -> *const SECKEYPublicKey;
@@ -106,16 +116,19 @@ pub enum VerifyError {
 /// info, a payload, and a signature over the payload, returns a result based on the outcome of
 /// decoding the subject public key info and running the signature verification algorithm on the
 /// signed data.
-pub fn verify_signature(signature_algorithm: SignatureAlgorithm, spki: &[u8], payload: &[u8],
-                        signature: &[u8]) -> Result<(), VerifyError> {
+pub fn verify_signature(
+    signature_algorithm: SignatureAlgorithm,
+    spki: &[u8],
+    payload: &[u8],
+    signature: &[u8],
+) -> Result<(), VerifyError> {
     if payload.len() > raw::c_int::max_value() as usize {
         return Err(VerifyError::InputTooLarge);
     }
     let len: raw::c_int = payload.len() as raw::c_int;
     let mut hash_buf = vec![0; SHA256_LENGTH];
-    let hash_result = unsafe {
-        PK11_HashBuf(SEC_OID_SHA256, hash_buf.as_mut_ptr(), payload.as_ptr(), len)
-    };
+    let hash_result =
+        unsafe { PK11_HashBuf(SEC_OID_SHA256, hash_buf.as_mut_ptr(), payload.as_ptr(), len) };
     if hash_result != SEC_SUCCESS {
         return Err(VerifyError::LibraryFailure);
     }
@@ -123,21 +136,21 @@ pub fn verify_signature(signature_algorithm: SignatureAlgorithm, spki: &[u8], pa
 
     let spki_item = SECItem::maybe_new(spki)?;
     // TODO: helper/macro for pattern of "call unsafe function, check null, defer unsafe release"?
-    let spki_handle = unsafe {
-        SECKEY_DecodeDERSubjectPublicKeyInfo(&spki_item)
-    };
+    let spki_handle = unsafe { SECKEY_DecodeDERSubjectPublicKeyInfo(&spki_item) };
     if spki_handle.is_null() {
         return Err(VerifyError::DecodingSPKIFailed);
     }
-    defer!(unsafe { SECKEY_DestroySubjectPublicKeyInfo(spki_handle); });
-    let key = unsafe {
-        SECKEY_ExtractPublicKey(spki_handle)
-    };
+    defer!(unsafe {
+        SECKEY_DestroySubjectPublicKeyInfo(spki_handle);
+    });
+    let key = unsafe { SECKEY_ExtractPublicKey(spki_handle) };
     if key.is_null() {
         // TODO: double-check that this can only fail if the library fails
         return Err(VerifyError::LibraryFailure);
     }
-    defer!(unsafe { SECKEY_DestroyPublicKey(key); });
+    defer!(unsafe {
+        SECKEY_DestroyPublicKey(key);
+    });
     let signature_item = SECItem::maybe_new(signature)?;
     let mechanism = match signature_algorithm {
         SignatureAlgorithm::ES256 => CKM_ECDSA,
@@ -147,9 +160,8 @@ pub fn verify_signature(signature_algorithm: SignatureAlgorithm, spki: &[u8], pa
     // This isn't entirely NSS' fault, but it mostly is.
     let rsa_pss_params_ptr: *const CkRsaPkcsPssParams = &rsa_pss_params;
     let rsa_pss_params_ptr: *const u8 = rsa_pss_params_ptr as *const u8;
-    let rsa_pss_params_bytes = unsafe {
-        slice::from_raw_parts(rsa_pss_params_ptr, mem::size_of::<CkRsaPkcsPssParams>())
-    };
+    let rsa_pss_params_bytes =
+        unsafe { slice::from_raw_parts(rsa_pss_params_ptr, mem::size_of::<CkRsaPkcsPssParams>()) };
     let rsa_pss_params_secitem = SECItem::maybe_new(rsa_pss_params_bytes)?;
     let params_item: *const SECItem = match signature_algorithm {
         SignatureAlgorithm::ES256 => ptr::null(),
@@ -157,8 +169,14 @@ pub fn verify_signature(signature_algorithm: SignatureAlgorithm, spki: &[u8], pa
     };
     let null_cx_ptr: *const raw::c_void = ptr::null();
     let result = unsafe {
-        PK11_VerifyWithMechanism(key, mechanism, params_item, &signature_item, &hash_item,
-                                 null_cx_ptr)
+        PK11_VerifyWithMechanism(
+            key,
+            mechanism,
+            params_item,
+            &signature_item,
+            &hash_item,
+            null_cx_ptr,
+        )
     };
     match result {
         SEC_SUCCESS => Ok(()),
@@ -167,11 +185,10 @@ pub fn verify_signature(signature_algorithm: SignatureAlgorithm, spki: &[u8], pa
     }
 }
 
-pub fn verify_cose_signature(payload: &[u8],
-                             cose_signature: Vec<u8>) -> Result<(), VerifyError> {
+pub fn verify_cose_signature(payload: &[u8], cose_signature: Vec<u8>) -> Result<(), VerifyError> {
     let spki: &[u8];
     // Parse COSE signature.
-    let cose_signature = decode_signature(cose_signature).unwrap();
+    let cose_signature = decode_signature(cose_signature, payload).unwrap();
     if cose_signature.values.len() != 1 {
         return Err(VerifyError::CoseFailed);
     }
@@ -181,11 +198,22 @@ pub fn verify_cose_signature(payload: &[u8],
         _ => return Err(VerifyError::CoseFailed),
     };
     let signature_bytes = &cose_signature.values[0].signature;
-    if signature_bytes.len() != 64 { // XXX: We expect an ES256 signature
+    if signature_bytes.len() != 64 {
+        // XXX: We expect an ES256 signature
+        return Err(VerifyError::CoseFailed);
+    }
+    let real_payload = &cose_signature.values[0].to_verify;
+    if real_payload.len() < payload.len() {
+        // XXX: We can probably make a better check here.
         return Err(VerifyError::CoseFailed);
     }
 
+    println!(" >>>> lalalalala:\n{:?}", real_payload);
     // Verify the parsed signature.
-    verify_signature(signature_algorithm, &cose_signature.values[0].signer_cert,
-                     payload, signature_bytes)
+    verify_signature(
+        signature_algorithm,
+        &cose_signature.values[0].signer_cert,
+        real_payload,
+        signature_bytes,
+    )
 }
