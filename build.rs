@@ -2,8 +2,10 @@ use std::env;
 use std::path::Path;
 
 fn main() {
-    if !Path::new("/usr/lib/libnss3.so").exists() {
-        let lib_dir = env::var("NSS_LIB_DIR").expect("Please set NSS_LIB_DIR");
+    // Use NSS_LIB_DIR lazy. If it's not set and we can't find NSS in the path,
+    // the build will fail.
+    let lib_dir = env::var("NSS_LIB_DIR");
+    if lib_dir {
         println!("cargo:rustc-link-search=native={}", lib_dir);
     }
 }

@@ -6,4 +6,11 @@ A Rust library for [COSE](https://tools.ietf.org/html/rfc8152) using [NSS](https
 
 **THIS IS WORK IN PROGRESS. DO NOT USE YET.**
 
+## Build instructions
+
+If NSS is not installed in the path, use NSS_LIB_DIR to set the library path where
+we can find the NSS libraries.
+
+    cargo build
+
 Get the latest version at [crates.io](https://crates.io/crates/cose).
