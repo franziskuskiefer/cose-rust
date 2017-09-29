@@ -10,7 +10,8 @@ addons:
   apt:
     packages:
       - build-essential
-      - nss
+      - libnss3
+      - libnss3-dev
 
 script:
 - |
