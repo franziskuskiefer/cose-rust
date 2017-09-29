@@ -24,9 +24,9 @@ struct SECItem {
 }
 
 impl SECItem {
-    fn maybe_new(data: &[u8]) -> Result<SECItem, VerifyError> {
+    fn maybe_new(data: &[u8]) -> Result<SECItem, NSSError> {
         if data.len() > u32::max_value() as usize {
-            return Err(VerifyError::InputTooLarge);
+            return Err(NSSError::InputTooLarge);
         }
         Ok(SECItem {
             typ: SI_BUFFER,
@@ -104,12 +104,16 @@ extern "C" {
 }
 
 /// An error type describing errors that may be encountered during verification.
-pub enum VerifyError {
+pub enum CoseError {
+    CoseFailed,
+    VerificationFailed,
+}
+
+pub enum NSSError {
     DecodingSPKIFailed,
     InputTooLarge,
     LibraryFailure,
     SignatureVerificationFailed,
-    CoseFailed,
 }
 
 /// Main entrypoint for verification. Given a signature algorithm, the bytes of a subject public key
@@ -121,16 +125,16 @@ pub fn verify_signature(
     spki: &[u8],
     payload: &[u8],
     signature: &[u8],
-) -> Result<(), VerifyError> {
+) -> Result<(), NSSError> {
     if payload.len() > raw::c_int::max_value() as usize {
-        return Err(VerifyError::InputTooLarge);
+        return Err(NSSError::InputTooLarge);
     }
     let len: raw::c_int = payload.len() as raw::c_int;
     let mut hash_buf = vec![0; SHA256_LENGTH];
     let hash_result =
         unsafe { PK11_HashBuf(SEC_OID_SHA256, hash_buf.as_mut_ptr(), payload.as_ptr(), len) };
     if hash_result != SEC_SUCCESS {
-        return Err(VerifyError::LibraryFailure);
+        return Err(NSSError::LibraryFailure);
     }
     let hash_item = SECItem::maybe_new(hash_buf.as_slice())?;
 
@@ -138,7 +142,7 @@ pub fn verify_signature(
     // TODO: helper/macro for pattern of "call unsafe function, check null, defer unsafe release"?
     let spki_handle = unsafe { SECKEY_DecodeDERSubjectPublicKeyInfo(&spki_item) };
     if spki_handle.is_null() {
-        return Err(VerifyError::DecodingSPKIFailed);
+        return Err(NSSError::DecodingSPKIFailed);
     }
     defer!(unsafe {
         SECKEY_DestroySubjectPublicKeyInfo(spki_handle);
@@ -146,7 +150,7 @@ pub fn verify_signature(
     let key = unsafe { SECKEY_ExtractPublicKey(spki_handle) };
     if key.is_null() {
         // TODO: double-check that this can only fail if the library fails
-        return Err(VerifyError::LibraryFailure);
+        return Err(NSSError::LibraryFailure);
     }
     defer!(unsafe {
         SECKEY_DestroyPublicKey(key);
@@ -180,39 +184,51 @@ pub fn verify_signature(
     };
     match result {
         SEC_SUCCESS => Ok(()),
-        SEC_FAILURE => Err(VerifyError::SignatureVerificationFailed),
-        _ => Err(VerifyError::LibraryFailure),
+        SEC_FAILURE => Err(NSSError::SignatureVerificationFailed),
+        _ => Err(NSSError::LibraryFailure),
     }
 }
 
-pub fn verify_cose_signature(payload: &[u8], cose_signature: Vec<u8>) -> Result<(), VerifyError> {
+pub fn sign(
+    signature_algorithm: SignatureAlgorithm,
+    spki: &[u8],
+    payload: &[u8],
+) -> Result<Vec<u8>, NSSError> {
+    unimplemented!()
+}
+
+pub fn verify_cose_signature(payload: &[u8], cose_signature: Vec<u8>) -> Result<(), CoseError> {
     let spki: &[u8];
     // Parse COSE signature.
     let cose_signature = decode_signature(cose_signature, payload).unwrap();
     if cose_signature.values.len() != 1 {
-        return Err(VerifyError::CoseFailed);
+        return Err(CoseError::CoseFailed);
     }
     let signature_type = &cose_signature.values[0].signature_type;
     let signature_algorithm = match signature_type {
         &CoseSignatureType::ES256 => SignatureAlgorithm::ES256,
-        _ => return Err(VerifyError::CoseFailed),
+        _ => return Err(CoseError::CoseFailed),
     };
     let signature_bytes = &cose_signature.values[0].signature;
     if signature_bytes.len() != 64 {
         // XXX: We expect an ES256 signature
-        return Err(VerifyError::CoseFailed);
+        return Err(CoseError::CoseFailed);
     }
     let real_payload = &cose_signature.values[0].to_verify;
     if real_payload.len() < payload.len() {
         // XXX: We can probably make a better check here.
-        return Err(VerifyError::CoseFailed);
+        return Err(CoseError::CoseFailed);
     }
 
     // Verify the parsed signature.
-    verify_signature(
+    let verify_result = verify_signature(
         signature_algorithm,
         &cose_signature.values[0].signer_cert,
         real_payload,
         signature_bytes,
-    )
+    );
+    if !verify_result.is_ok() {
+        return Err(CoseError::VerificationFailed);
+    }
+    Ok(())
 }

@@ -1,6 +1,5 @@
 use cose::test_setup as test;
-use cose::verify as verify;
-
+use cose::nss as nss;
 
 // curve: NIST P-256
 // public key: U = xG
@@ -42,8 +41,8 @@ fn test_rfc6979_test_vector_1() {
              0x9f, 0x65, 0xf3, 0xe9, 0x00, 0xdb, 0xb9, 0xaf, 0xf4, 0x06, 0x4d, 0xc4, 0xab, 0x2f,
              0x84, 0x3a, 0xcd, 0xa8];
     let payload = b"sample";
-    assert!(verify::verify_signature(verify::SignatureAlgorithm::ES256, NIST_P256_TEST_SPKI,
-                                     payload, &signature).is_ok());
+    assert!(nss::verify_signature(nss::SignatureAlgorithm::ES256, NIST_P256_TEST_SPKI,
+                                  payload, &signature).is_ok());
 }
 
 #[test]
@@ -62,8 +61,8 @@ fn test_rfc6979_test_vector_2() {
              0x49, 0x15, 0x5f, 0x26, 0x7e, 0x60, 0xd3, 0x81, 0x4b, 0x4c, 0x0c, 0xc8, 0x42, 0x50,
              0xe4, 0x6f, 0x00, 0x83];
     let payload = b"test";
-    assert!(verify::verify_signature(verify::SignatureAlgorithm::ES256, NIST_P256_TEST_SPKI,
-                                     payload, &signature).is_ok());
+    assert!(nss::verify_signature(nss::SignatureAlgorithm::ES256, NIST_P256_TEST_SPKI,
+                                  payload, &signature).is_ok());
 }
 
 #[test]
@@ -84,8 +83,8 @@ fn test_tampered_signature_es256() {
              0x49, 0x15, 0x6f, 0x26, 0x7e, 0x60, 0xd3, 0x81, 0x4b, 0x4c, 0x0c, 0xc8, 0x42, 0x50,
              0xe4, 0x6f, 0x00, 0x83];
     let payload = b"test";
-    assert!(verify::verify_signature(verify::SignatureAlgorithm::ES256, NIST_P256_TEST_SPKI,
-                                     payload, &signature).is_err()); // TODO: match specific error
+    assert!(nss::verify_signature(nss::SignatureAlgorithm::ES256, NIST_P256_TEST_SPKI,
+                                  payload, &signature).is_err()); // TODO: match specific error
 }
 
 #[test]
@@ -105,8 +104,8 @@ fn test_tampered_message_es256() {
              0x49, 0x15, 0x6f, 0x26, 0x7e, 0x60, 0xd3, 0x81, 0x4b, 0x4c, 0x0c, 0xc8, 0x42, 0x50,
              0xe4, 0x6f, 0x00, 0x83];
     let payload = b"testTAMPERED";
-    assert!(verify::verify_signature(verify::SignatureAlgorithm::ES256, NIST_P256_TEST_SPKI,
-                                     payload, &signature).is_err()); // TODO: match specific error
+    assert!(nss::verify_signature(nss::SignatureAlgorithm::ES256, NIST_P256_TEST_SPKI,
+                                  payload, &signature).is_err()); // TODO: match specific error
 }
 
 // SEQUENCE
@@ -211,6 +210,7 @@ fn test_fips186_3_test_vector_1() {
                        0x61, 0x4d, 0x0f, 0x6c, 0xdd, 0x9f, 0x08, 0xed, 0x52, 0x9a, 0x4a, 0xd0, 0xe7,
                        0x59, 0xcf, 0x3a, 0x02, 0x3d, 0xc8, 0xa3, 0x0b, 0x9a, 0x87, 0x29, 0x74, 0xaf,
                        0x9b, 0x2a, 0xf6, 0xdc, 0x3d, 0x11, 0x1d, 0x0f, 0xeb, 0x70, 0x06];
-    assert!(verify::verify_signature(verify::SignatureAlgorithm::PS256, FIPS_RSA_3072_SPKI,
-                                     &payload, &signature).is_ok());
+    assert!(nss::verify_signature(nss::SignatureAlgorithm::PS256,
+                                  FIPS_RSA_3072_SPKI, &payload,
+                                  &signature).is_ok());
 }

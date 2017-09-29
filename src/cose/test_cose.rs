@@ -1,9 +1,9 @@
 use cose::test_setup as test;
-use cose::verify as verify;
+use cose::nss as nss;
 
 #[test]
 fn test_rfc6979_test_vector_cose_1() {
-    setup();
+    test::setup();
     let payload = b"This is the content.";
     let cose_signature =
         vec![0xD8, 0x62,
@@ -38,5 +38,5 @@ fn test_rfc6979_test_vector_cose_1() {
                              0xb8, 0x54, 0x4c, 0x90, 0x8b, 0x45, 0x07, 0xde, 0x1e, 0x90, 0xb7, 0x17,
                              0xc3, 0xd3, 0x48, 0x16, 0xfe, 0x92, 0x6a, 0x2b, 0x98, 0xf5, 0x3a, 0xfd,
                              0x2f, 0xa0, 0xf3, 0x0a]; // signature bytes
-    assert!(verify::verify_cose_signature(payload, cose_signature).is_ok());
+    assert!(nss::verify_cose_signature(payload, cose_signature).is_ok());
 }
