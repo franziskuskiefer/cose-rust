@@ -1,7 +1,7 @@
 use std::os::raw;
 use std::ptr;
 use std::sync::{Once, ONCE_INIT};
-use verify::*;
+use cose::verify as verify;
 
 static START: Once = ONCE_INIT;
 

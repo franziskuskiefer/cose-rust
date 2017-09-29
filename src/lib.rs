@@ -2,4 +2,3 @@
 
 mod cbor;
 mod cose;
-mod verify;
