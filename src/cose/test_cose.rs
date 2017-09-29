@@ -1,4 +1,6 @@
+#[cfg(test)]
 use cose::test_setup as test;
+#[cfg(test)]
 use cose::cose as cose;
 
 #[test]

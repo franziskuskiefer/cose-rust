@@ -28,20 +28,20 @@ impl DecoderCursor {
         let pos = self.cursor.position() as usize;
         let first_value = self.cursor.get_ref()[pos] & 0x1F;
         self.cursor.seek(SeekFrom::Current(1)).unwrap();
-        let mut val: u64 = 0;
-        match first_value {
+        let val: u64 = match first_value {
+            0...23 => first_value as u64,
             24 => {
                 // Manually advance cursor.
                 let pos = self.cursor.position() as usize;
-                val = self.cursor.get_ref()[pos] as u64;
+                let tmp = self.cursor.get_ref()[pos] as u64;
                 self.cursor.seek(SeekFrom::Current(1)).unwrap();
+                tmp
             }
-            25 => val = self.read_int_from_bytes(2).unwrap(),
-            26 => val = self.read_int_from_bytes(4).unwrap(),
-            27 => val = self.read_int_from_bytes(8).unwrap(),
-            28...31 => return Err("Not well formed and indefinite len isn't supported"),
-            _ => val = first_value as u64,
-        }
+            25 => self.read_int_from_bytes(2).unwrap(),
+            26 => self.read_int_from_bytes(4).unwrap(),
+            27 => self.read_int_from_bytes(8).unwrap(),
+            _ => return Err("Not well formed and indefinite len isn't supported"),
+        };
         Ok(val)
     }
 
@@ -79,7 +79,7 @@ impl DecoderCursor {
         // Read the length of the array.
         let num_items = self.read_int().unwrap();
         // Decode each of the num_items data items.
-        for item_num in 0..num_items {
+        for _ in 0..num_items {
             array.push(self.decode_item().unwrap());
         }
         Ok(CBORType::Array(array))
@@ -124,7 +124,7 @@ impl DecoderCursor {
         // Create a new array.
         let mut map: Vec<CBORMap> = Vec::new();
         // Decode each of the num_items (key, data item) pairs.
-        for item_num in 0..num_items {
+        for _ in 0..num_items {
             let key_val = self.decode_item().unwrap();
             let item_value = self.decode_item().unwrap();
             let item = CBORMap {
@@ -247,7 +247,6 @@ pub fn decode_item(decoder_cursor: &mut DecoderCursor) -> Result<(), &'static st
 }
 
 /// Read the CBOR structure in bytes and return it as a CBOR object.
-#[allow(dead_code)]
 pub fn decode(bytes: Vec<u8>) -> Result<CBORObject, &'static str> {
     let mut decoder_cursor = DecoderCursor {
         cursor: Cursor::new(bytes),

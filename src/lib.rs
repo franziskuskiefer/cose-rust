@@ -1,4 +1,4 @@
 #[macro_use(defer)] extern crate scopeguard;
 
-mod cbor;
-mod cose;
+pub mod cbor;
+pub mod cose;
