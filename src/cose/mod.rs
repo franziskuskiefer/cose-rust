@@ -1,5 +1,6 @@
 mod decoder;
 mod nss;
+mod cose;
 
 mod test_setup;
 mod test_nss_verify;

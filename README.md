@@ -1,7 +1,7 @@
 # cose-rust
 A Rust library for [COSE](https://tools.ietf.org/html/rfc8152) using [NSS](https://github.com/nss-dev/nss/).
 
-[![Build Status](https://travis-ci.org/franziskuskiefer/cose-rust.svg?branch=cose-playground)](https://travis-ci.org/franziskuskiefer/cose-rust.svg?branch=cose-playground)
+[![Build Status](https://travis-ci.org/franziskuskiefer/cose-rust.svg?branch=cose-playground)](https://travis-ci.org/franziskuskiefer/cose-rust/)
 ![Maturity Level](https://img.shields.io/badge/maturity-alpha-red.svg)
 
 **THIS IS WORK IN PROGRESS. DO NOT USE YET.**
