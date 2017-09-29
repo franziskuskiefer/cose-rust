@@ -1,7 +1,7 @@
 use std::env;
 
 fn main() {
-    // Use NSS_LIB_DIR lazy. If it's not set and we can't find NSS in the path,
+    // Use NSS_LIB_DIR lazily. If it's not set and we can't find NSS in the path,
     // the build will fail.
     let lib_dir = env::var("NSS_LIB_DIR");
     if lib_dir.is_ok() {
