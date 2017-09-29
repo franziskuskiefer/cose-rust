@@ -159,6 +159,7 @@ pub fn decode_signature(bytes: Vec<u8>, payload: &[u8]) -> Result<CoseSignatures
         return Err("Sorry, this is not implemented for payloads that are longer than 23.");
     }
     let tmp:u8 = ((2 << 5) as u8) + payload.len() as u8;
+    bytes_to_verify.push(tmp);
     bytes_to_verify.extend_from_slice(payload);
     // Add CBOR array stuff.
     bytes_to_verify.insert(0, 0x85);

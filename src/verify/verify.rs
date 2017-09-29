@@ -208,7 +208,6 @@ pub fn verify_cose_signature(payload: &[u8], cose_signature: Vec<u8>) -> Result<
         return Err(VerifyError::CoseFailed);
     }
 
-    println!(" >>>> lalalalala:\n{:?}", real_payload);
     // Verify the parsed signature.
     verify_signature(
         signature_algorithm,
