@@ -1,7 +1,7 @@
 pub mod decoder;
-mod test_decoder;
-
 mod verify;
-mod test_verify;
-
 pub use self::verify::{verify_signature, SignatureAlgorithm, VerifyError};
+
+mod test_setup;
+mod test_verify;
+mod test_decoder;

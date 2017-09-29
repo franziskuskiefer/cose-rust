@@ -1,7 +1,7 @@
-use std::os::raw;
-use std::ptr;
 use std::slice;
 use std::mem;
+use std::ptr;
+use std::os::raw;
 
 use cose::decoder::*;
 
