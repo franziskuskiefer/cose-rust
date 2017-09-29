@@ -133,13 +133,6 @@ pub fn decode_signature(bytes: Vec<u8>, payload: &[u8]) -> Result<CoseSignatures
     // Read the signature bytes.
     let tmp = &signature_item[2];
     let signature_bytes = unpack!(Bytes, tmp).clone();
-    //  Sig_structure = [
-    //     context : "Signature" / "Signature1" / "CounterSignature",
-    //     body_protected : empty_or_serialized_map,
-    //     ? sign_protected : empty_or_serialized_map,
-    //     external_aad : bstr,
-    //     payload : bstr
-    // ]
     let mut bytes_to_verify:Vec<u8> = Vec::new();
     // XXX: Use encoder for this.
     bytes_to_verify.push(0x69);
