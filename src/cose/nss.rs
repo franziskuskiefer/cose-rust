@@ -242,12 +242,8 @@ pub fn sign(
             ptr::null(),
         )
     };
-    if rv != SEC_SUCCESS {
+    if rv != SEC_SUCCESS || key.is_null() {
         println!("Decoding the PKCS8 failed.");
-        return Err(NSSError::DecodingPKCS8Failed);
-    }
-    if key.is_null() {
-        println!("Decoding the PKCS8 failed (key is null).");
         return Err(NSSError::DecodingPKCS8Failed);
     }
     let hash_buf = hash(payload).unwrap();

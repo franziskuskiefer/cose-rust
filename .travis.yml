@@ -1,4 +1,4 @@
-sudo: false
+sudo: true
 language: rust
 cache: cargo
 rust:
@@ -10,10 +10,15 @@ addons:
   apt:
     packages:
       - build-essential
-      - libnss3
       - libnss3-dev
 
 script:
+# The NSS version in Ubuntu is too old. Get a newer one.
+- |
+  wget http://de.archive.ubuntu.com/ubuntu/pool/main/n/nss/libnss3_3.32-1ubuntu2_amd64.deb
+  wget http://de.archive.ubuntu.com/ubuntu/pool/main/n/nspr/libnspr4_4.16-1ubuntu1_amd64.deb
+  sudo dpkg -i libnspr4_4.16-1ubuntu1_amd64.deb
+  sudo dpkg -i libnss3_3.32-1ubuntu2_amd64.deb
 - |
   cargo build &&
   cargo test
