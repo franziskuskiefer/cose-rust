@@ -8,7 +8,7 @@ A Rust library for [COSE](https://tools.ietf.org/html/rfc8152) using [NSS](https
 
 ## Build instructions
 
-If NSS is not installed in the path, use NSS_LIB_DIR to set the library path where
+If NSS is not installed in the path, use `NSS_LIB_DIR` to set the library path where
 we can find the NSS libraries.
 
     cargo build
