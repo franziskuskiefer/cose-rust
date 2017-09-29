@@ -73,6 +73,8 @@ const SEC_FAILURE: SECStatus = -1; // Called SECFailure in NSS
 enum CERTSubjectPublicKeyInfo {}
 
 enum SECKEYPublicKey {}
+enum SECKEYPrivateKey {}
+enum PK11SlotInfo {}
 
 const SHA256_LENGTH: usize = 32;
 
@@ -101,19 +103,59 @@ extern "C" {
 
     fn SECKEY_ExtractPublicKey(spki: *const CERTSubjectPublicKeyInfo) -> *const SECKEYPublicKey;
     fn SECKEY_DestroyPublicKey(pubk: *const SECKEYPublicKey);
+
+    fn PK11_ImportDERPrivateKeyInfoAndReturnKey(
+        slot: *mut PK11SlotInfo,
+        derPKI: *const SECItem,
+        nickname: *const SECItem,
+        publicValue: *const SECItem,
+        isPerm: bool,
+        isPrivate: bool,
+        keyUsage: u32,
+        privk: *mut *mut SECKEYPrivateKey,
+        wincx: *const u8,
+    ) -> SECStatus;
+    fn PK11_GetInternalSlot() -> *mut PK11SlotInfo;
+    fn PK11_SignatureLen(key: *const SECKEYPrivateKey) -> usize;
+    fn PK11_SignWithMechanism(
+        key: *const SECKEYPrivateKey,
+        mech: CkMechanismType,
+        param: *const SECItem,
+        sig: *mut SECItem,
+        hash: *const SECItem,
+    ) -> SECStatus;
 }
 
 /// An error type describing errors that may be encountered during verification.
+#[derive(Debug)]
 pub enum CoseError {
     CoseFailed,
     VerificationFailed,
 }
 
+#[derive(Debug)]
 pub enum NSSError {
     DecodingSPKIFailed,
+    DecodingPKCS8Failed,
     InputTooLarge,
     LibraryFailure,
     SignatureVerificationFailed,
+    SigningFailed,
+}
+
+// XXX: make this work with other hashe algos.
+fn hash(payload: &[u8]) -> Result<Vec<u8>, NSSError> {
+    if payload.len() > raw::c_int::max_value() as usize {
+        return Err(NSSError::InputTooLarge);
+    }
+    let mut hash_buf = vec![0; SHA256_LENGTH];
+    let len: raw::c_int = payload.len() as raw::c_int;
+    let hash_result =
+        unsafe { PK11_HashBuf(SEC_OID_SHA256, hash_buf.as_mut_ptr(), payload.as_ptr(), len) };
+    if hash_result != SEC_SUCCESS {
+        return Err(NSSError::LibraryFailure);
+    }
+    Ok(hash_buf)
 }
 
 /// Main entrypoint for verification. Given a signature algorithm, the bytes of a subject public key
@@ -126,16 +168,7 @@ pub fn verify_signature(
     payload: &[u8],
     signature: &[u8],
 ) -> Result<(), NSSError> {
-    if payload.len() > raw::c_int::max_value() as usize {
-        return Err(NSSError::InputTooLarge);
-    }
-    let len: raw::c_int = payload.len() as raw::c_int;
-    let mut hash_buf = vec![0; SHA256_LENGTH];
-    let hash_result =
-        unsafe { PK11_HashBuf(SEC_OID_SHA256, hash_buf.as_mut_ptr(), payload.as_ptr(), len) };
-    if hash_result != SEC_SUCCESS {
-        return Err(NSSError::LibraryFailure);
-    }
+    let hash_buf = hash(payload).unwrap();
     let hash_item = SECItem::maybe_new(hash_buf.as_slice())?;
 
     let spki_item = SECItem::maybe_new(spki)?;
@@ -191,10 +224,52 @@ pub fn verify_signature(
 
 pub fn sign(
     signature_algorithm: SignatureAlgorithm,
-    spki: &[u8],
+    pk8: &[u8],
     payload: &[u8],
 ) -> Result<Vec<u8>, NSSError> {
-    unimplemented!()
+    let slot = unsafe { PK11_GetInternalSlot() };
+    if slot.is_null() {
+        println!("Couldn't get the internal NSS slot.");
+        return Err(NSSError::LibraryFailure);
+    }
+    let pkcs8Item = SECItem::maybe_new(pk8)?;
+    // let null_cx_ptr: *const raw::c_void = ptr::null();
+    let mut key: *mut SECKEYPrivateKey = ptr::null_mut();
+    let ku_all = 0xFF;
+    let rv = unsafe {
+        PK11_ImportDERPrivateKeyInfoAndReturnKey(
+            slot,
+            &pkcs8Item,
+            ptr::null(),
+            ptr::null(),
+            false,
+            false,
+            ku_all,
+            &mut key,
+            ptr::null(),
+        )
+    };
+    if rv != SEC_SUCCESS || key.is_null() {
+        println!("Decoding the PKCS8 failed.");
+        return Err(NSSError::DecodingPKCS8Failed);
+    }
+    let hash_buf = hash(payload).unwrap();
+    let hash_item = SECItem::maybe_new(hash_buf.as_slice())?;
+    let signature_len = unsafe { PK11_SignatureLen(key) };
+    let mut signature: Vec<u8> = Vec::with_capacity(signature_len);
+    // XXX: rewrite without unsafe.
+    unsafe {
+        signature.set_len(signature_len);
+    }
+    let mut signature_item = SECItem::maybe_new(signature.as_slice())?;
+    let rv =
+        unsafe { PK11_SignWithMechanism(key, CKM_ECDSA, ptr::null(), &mut signature_item, &hash_item) };
+
+    if rv != SEC_SUCCESS || signature_item.len != signature_len as u32 {
+        println!("Signing failed.");
+        return Err(NSSError::SigningFailed);
+    }
+    Ok(signature)
 }
 
 pub fn verify_cose_signature(payload: &[u8], cose_signature: Vec<u8>) -> Result<(), CoseError> {
