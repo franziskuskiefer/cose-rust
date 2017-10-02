@@ -1,12 +1,13 @@
+#[cfg(test)]
 use cbor::decoder::*;
 
 // First test all the basic types
-#[allow(dead_code)]
+#[cfg(test)]
 fn test_decoder(bytes: Vec<u8>, expected: CBORObject) {
     assert_eq!(decode(bytes).unwrap(), expected);
 }
 
-#[allow(dead_code)]
+#[cfg(test)]
 fn test_integer(bytes: Vec<u8>, expected: u64) {
     let decoded = decode(bytes).unwrap();
     for val in decoded.values {
@@ -17,7 +18,7 @@ fn test_integer(bytes: Vec<u8>, expected: u64) {
     }
 }
 
-#[allow(dead_code)]
+#[cfg(test)]
 fn test_integer_all(bytes: Vec<u8>, expected_value: u64) {
     let expected = CBORObject { values: vec![CBORType::Integer(expected_value)] };
     test_decoder(bytes.clone(), expected);
@@ -60,7 +61,7 @@ fn test_integer_objects() {
     test_integer_all(bytes, 18446744073709551615);
 }
 
-#[allow(dead_code)]
+#[cfg(test)]
 fn test_tag(bytes: Vec<u8>, expected: u64) {
     let decoded = decode(bytes).unwrap();
     for val in decoded.values {

@@ -3,8 +3,6 @@ use std::mem;
 use std::ptr;
 use std::os::raw;
 
-use cose::decoder::*;
-
 /// An enum identifying supported signature algorithms. Currently only ECDSA with SHA256 (ES256) and
 /// RSASSA-PSS with SHA-256 (PS256) are supported. Note that with PS256, the salt length is defined
 /// to be 32 bytes.
@@ -135,6 +133,7 @@ pub enum NSSError {
     LibraryFailure,
     SignatureVerificationFailed,
     SigningFailed,
+    Unimplemented,
 }
 
 // XXX: make this work with other hashe algos.
@@ -221,18 +220,22 @@ pub fn sign(
     pk8: &[u8],
     payload: &[u8],
 ) -> Result<Vec<u8>, NSSError> {
+    match signature_algorithm {
+        SignatureAlgorithm::ES256 => {},
+        SignatureAlgorithm::PS256 => return Err(NSSError::Unimplemented),
+    };
     let slot = unsafe { PK11_GetInternalSlot() };
     if slot.is_null() {
         println!("Couldn't get the internal NSS slot.");
         return Err(NSSError::LibraryFailure);
     }
-    let pkcs8Item = SECItem::maybe_new(pk8)?;
+    let pkcs8item = SECItem::maybe_new(pk8)?;
     let mut key: *mut SECKEYPrivateKey = ptr::null_mut();
     let ku_all = 0xFF;
     let rv = unsafe {
         PK11_ImportDERPrivateKeyInfoAndReturnKey(
             slot,
-            &pkcs8Item,
+            &pkcs8item,
             ptr::null(),
             ptr::null(),
             false,

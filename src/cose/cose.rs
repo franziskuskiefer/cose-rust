@@ -12,7 +12,6 @@ pub enum CoseError {
 
 /// Verify a COSE signature.
 pub fn verify_signature(payload: &[u8], cose_signature: Vec<u8>) -> Result<(), CoseError> {
-    let spki: &[u8];
     // Parse COSE signature.
     let cose_signature = decode_signature(cose_signature, payload).unwrap();
     if cose_signature.values.len() != 1 {
@@ -48,6 +47,7 @@ pub fn verify_signature(payload: &[u8], cose_signature: Vec<u8>) -> Result<(), C
 }
 
 /// Sign the payload and return a serialised COSE_Sign object.
+#[allow(unused_variables)]
 pub fn sign(payload: &[u8]) -> Result<Vec<u8>, CoseError> {
     unimplemented!()
 }

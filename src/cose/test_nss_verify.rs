@@ -1,4 +1,6 @@
+#[cfg(test)]
 use cose::test_setup as test;
+#[cfg(test)]
 use cose::nss as nss;
 
 #[test]
@@ -92,6 +94,7 @@ fn test_tampered_message_es256() {
 //    SEQUENCE
 //      INTEGER (n)
 //      INTEGER (e)
+#[cfg(test)]
 static FIPS_RSA_3072_SPKI: &'static [u8] =
     &[0x30, 0x82, 0x01, 0xA2,
             0x30, 0x0d,
