@@ -1,5 +1,7 @@
 #[cfg(test)]
 use cbor::decoder::*;
+#[cfg(test)]
+use cbor::cbor::*;
 
 // First test all the basic types
 #[cfg(test)]

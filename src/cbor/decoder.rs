@@ -1,5 +1,5 @@
 use std::io::{Cursor, Read, Seek, SeekFrom};
-use std::string::String;
+use cbor::cbor::{CBORType, CBORMap};
 
 /// Struct holding a cursor and additional information for decoding.
 #[derive(Debug)]
@@ -118,27 +118,6 @@ impl DecoderCursor {
             _ => return Err("Malformed first byte"),
         }
     }
-}
-
-#[derive(Debug)]
-#[derive(Clone)]
-#[derive(PartialEq)]
-pub struct CBORMap {
-    pub key: CBORType,
-    pub value: CBORType,
-}
-
-#[derive(Debug)]
-#[derive(Clone)]
-#[derive(PartialEq)]
-pub enum CBORType {
-    Integer(u64),
-    SignedInteger(i64),
-    Tag(u64, Box<CBORType>),
-    Bytes(Vec<u8>),
-    String(String),
-    Array(Vec<CBORType>),
-    Map(Vec<CBORMap>),
 }
 
 /// Read the CBOR structure in bytes and return it as a CBOR object.
