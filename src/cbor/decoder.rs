@@ -1,5 +1,6 @@
+use std::collections::BTreeMap;
 use std::io::{Cursor, Read, Seek, SeekFrom};
-use cbor::cbor::{CBORType, CBORMap};
+use cbor::cbor::{CBORType};
 
 /// Struct holding a cursor and additional information for decoding.
 #[derive(Debug)]
@@ -89,16 +90,12 @@ impl DecoderCursor {
         // XXX: check for duplicate keys.
         let num_items = self.read_int().unwrap();
         // Create a new array.
-        let mut map: Vec<CBORMap> = Vec::new();
+        let mut map: BTreeMap<CBORType, CBORType> = BTreeMap::new();
         // Decode each of the num_items (key, data item) pairs.
         for _ in 0..num_items {
             let key_val = self.decode_item().unwrap();
             let item_value = self.decode_item().unwrap();
-            let item = CBORMap {
-                key: key_val,
-                value: item_value
-            };
-            map.push(item);
+            map.insert(key_val, item_value);
         }
         Ok(CBORType::Map(map))
     }

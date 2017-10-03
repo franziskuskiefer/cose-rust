@@ -1,4 +1,5 @@
-use cbor::cbor::{CBORType, CBORMap};
+use std::collections::BTreeMap;
+use cbor::cbor::{CBORType};
 
 // pub enum CborType<'a> {
 //     UInt(u64),
@@ -98,14 +99,14 @@ fn encode_array(output: &mut Vec<u8>, array: &[CBORType]) {
 /// The major type is 5. The number of pairs is encoded as with positive integers. Then follows the
 /// encodings of each key, value pair. In Canonical CBOR, the keys must be sorted lowest value to
 /// highest.
-fn encode_map(output: &mut Vec<u8>, map: &Vec<CBORMap>) {
+fn encode_map(output: &mut Vec<u8>, map: &BTreeMap<CBORType, CBORType>) {
     common_encode_unsigned(output, 5, map.len() as u64);
-    for item in map {
-        let key_encoded = item.key.serialize();
+    for (key, value) in map {
+        let key_encoded = key.serialize();
         for byte in key_encoded {
             output.push(byte);
         }
-        let value_encoded = item.value.serialize();
+        let value_encoded = value.serialize();
         for byte in value_encoded {
             output.push(byte);
         }
@@ -113,15 +114,6 @@ fn encode_map(output: &mut Vec<u8>, map: &Vec<CBORMap>) {
 }
 
 impl CBORType {
-    /// Sort a Cbor object.
-    /// XXX: For now only sorting maps with (signed) integer keys.
-    pub fn sort(&mut self) {
-        match self {
-            &mut CBORType::Map(ref mut map) => map.sort(),
-            _ => (),
-        }
-    }
-
     /// Serialize a Cbor object.
     pub fn serialize(&self) -> Vec<u8> {
         let mut bytes: Vec<u8> = Vec::new();

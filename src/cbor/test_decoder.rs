@@ -2,6 +2,8 @@
 use cbor::decoder::*;
 #[cfg(test)]
 use cbor::cbor::*;
+#[cfg(test)]
+use std::collections::BTreeMap;
 
 // First test all the basic types
 #[cfg(test)]
@@ -299,16 +301,15 @@ fn test_byte_strings() {
 fn test_maps() {
     // {}
     let bytes: Vec<u8> = vec![0xa0];
-    let expected = CBORType::Map(vec![]);
-    test_decoder(bytes, expected);
+    let expected: BTreeMap<CBORType, CBORType> = BTreeMap::new();
+    test_decoder(bytes, CBORType::Map(expected));
 
     // {1: 2, 3: 4}
     let bytes: Vec<u8> = vec![0xa2, 0x01, 0x02, 0x03, 0x04];
-    let expected =
-        CBORType::Map(vec![
-            CBORMap{key: CBORType::Integer(1), value: CBORType::Integer(2)},
-            CBORMap{key: CBORType::Integer(3), value: CBORType::Integer(4)}]);
-    test_decoder(bytes, expected);
+    let mut expected: BTreeMap<CBORType, CBORType> = BTreeMap::new();
+    expected.insert(CBORType::Integer(1), CBORType::Integer(2));
+    expected.insert(CBORType::Integer(3), CBORType::Integer(4));
+    test_decoder(bytes, CBORType::Map(expected));
 
     // TODO: strings aren't properly supported as keys yet.
     // {"a": 1, "b": [2, 3]}
