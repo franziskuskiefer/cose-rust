@@ -310,6 +310,7 @@ fn test_maps() {
             CBORMap{key: CBORType::Integer(3), value: CBORType::Integer(4)}]);
     test_decoder(bytes, expected);
 
+    // TODO: strings aren't properly supported as keys yet.
     // {"a": 1, "b": [2, 3]}
     // let bytes: Vec<u8> = vec![0xa2, 0x61, 0x61, 0x01, 0x61, 0x62, 0x82, 0x02, 0x03];
     // let expected =

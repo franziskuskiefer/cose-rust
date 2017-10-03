@@ -124,10 +124,6 @@ fn test_map() {
     assert_eq!(vec![0xa4, 0x25, 0x0a, 0x24, 0x0f, 0x23, 0x0a, 0x20, 0x14],
                negative_map.serialize());
 
-    // let mut mixed_map: BTreeMap<i64, CBORType> = BTreeMap::new();
-    // mixed_map.insert(0, CBORType::Integer(10));
-    // mixed_map.insert(-10, CBORType::Integer(20));
-    // mixed_map.insert(15, CBORType::Integer(15));
     let mut mixed_map =
         CBORType::Map(vec![
             CBORMap{key: CBORType::Integer(0), value: CBORType::Integer(10)},
