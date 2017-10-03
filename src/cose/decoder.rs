@@ -1,4 +1,5 @@
 use cbor::decoder::*;
+use cbor::cbor::*; //{CBORType}
 
 #[derive(Debug)]
 pub enum CoseType {
@@ -25,18 +26,6 @@ pub struct CoseSignature {
 #[derive(Debug)]
 pub struct CoseSignatures {
     pub values: Vec<CoseSignature>,
-}
-
-macro_rules! unpack {
-   ($to:tt, $var:ident) => (
-        match $var {
-            &CBORType::$to(ref cose_object) => {
-                cose_object
-            }
-            // XXX: This needs handling!
-            _ => return Err("This is not a valid COSE signature object X."),
-        };
-    )
 }
 
 /// COSE_Sign = [
