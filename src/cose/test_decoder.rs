@@ -48,8 +48,8 @@ fn test_single_signature() {
         0xc3, 0xd3, 0x48, 0x16, 0xfe, 0x92, 0x6a, 0x2b, 0x98, 0xf5, 0x3a, 0xfd,
         0x2f, 0xa0, 0xf3, 0x0a];
     let payload = b"payload";
-    let cose_signature = decode_signature(bytes, payload).unwrap();
-    assert_eq!(cose_signature.values.len(), 1);
-    assert_eq!(cose_signature.values[0].signature_type, CoseSignatureType::ES256);
-    assert_eq!(cose_signature.values[0].signature, signature_bytes);
+    let cose_signatures = decode_signature(bytes, payload).unwrap();
+    assert_eq!(cose_signatures.len(), 1);
+    assert_eq!(cose_signatures[0].signature_type, CoseSignatureType::ES256);
+    assert_eq!(cose_signatures[0].signature, signature_bytes);
 }

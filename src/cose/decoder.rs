@@ -22,11 +22,6 @@ pub struct CoseSignature {
     pub to_verify: Vec<u8>,
 }
 
-#[derive(Debug)]
-pub struct CoseSignatures {
-    pub values: Vec<CoseSignature>,
-}
-
 macro_rules! unpack {
    ($to:tt, $var:ident) => (
         match $var {
@@ -78,7 +73,7 @@ macro_rules! unpack {
 ///     signature : bstr
 /// ]
 
-pub fn decode_signature(bytes: Vec<u8>, payload: &[u8]) -> Result<CoseSignatures, &'static str> {
+pub fn decode_signature(bytes: Vec<u8>, payload: &[u8]) -> Result<Vec<CoseSignature>, &'static str> {
     // This has to be a COSE_Sign object, which is a tagged array.
     let tagged_cose_sign = decode(bytes)?;
     let cose_sign_array = match tagged_cose_sign {
@@ -197,7 +192,7 @@ pub fn decode_signature(bytes: Vec<u8>, payload: &[u8]) -> Result<CoseSignatures
         certs: Vec::new(),
         to_verify: bytes_to_verify,
     };
-    let mut result = CoseSignatures { values: Vec::new() };
-    result.values.push(signature);
+    let mut result = Vec::new();
+    result.push(signature);
     Ok(result)
 }
