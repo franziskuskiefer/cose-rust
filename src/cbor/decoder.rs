@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 use std::io::{Cursor, Read, Seek, SeekFrom};
-use cbor::cbor::{CborType};
+use cbor::cbor::CborType;
 
 /// Struct holding a cursor and additional information for decoding.
 #[derive(Debug)]
