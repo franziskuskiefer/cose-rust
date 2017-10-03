@@ -1,21 +1,11 @@
+use std::collections::BTreeMap;
+use std::cmp::Ordering;
 
 #[derive(Debug)]
 #[derive(Clone)]
 #[derive(PartialEq)]
 #[derive(PartialOrd)]
 #[derive(Eq)]
-#[derive(Ord)]
-pub struct CBORMap {
-    pub key: CBORType,
-    pub value: CBORType,
-}
-
-#[derive(Debug)]
-#[derive(Clone)]
-#[derive(PartialEq)]
-#[derive(PartialOrd)]
-#[derive(Eq)]
-#[derive(Ord)]
 pub enum CBORType {
     Integer(u64),
     SignedInteger(i64),
@@ -23,7 +13,7 @@ pub enum CBORType {
     Bytes(Vec<u8>),
     String(String),
     Array(Vec<CBORType>),
-    Map(Vec<CBORMap>),
+    Map(BTreeMap<CBORType, CBORType>),
 }
 
 macro_rules! unpack {
@@ -36,4 +26,37 @@ macro_rules! unpack {
             _ => return Err("Error unpacking a CBORType."),
         };
     )
+}
+
+impl Ord for CBORType {
+    fn cmp(&self, other: &Self) -> Ordering {
+        match (self, other) {
+            (&CBORType::Integer(x), &CBORType::Integer(y)) => {
+                if x < y {
+                    return Ordering::Less;
+                } else if x == y {
+                    return Ordering::Equal;
+                } else {
+                    return Ordering::Greater;
+                }
+            }
+            (&CBORType::SignedInteger(x), &CBORType::SignedInteger(y)) => {
+                if x < y {
+                    return Ordering::Less;
+                } else if x == y {
+                    return Ordering::Equal;
+                } else {
+                    return Ordering::Greater;
+                }
+            }
+            (&CBORType::Integer(_), &CBORType::SignedInteger(_)) => {
+                return Ordering::Greater;
+            }
+            (&CBORType::SignedInteger(_), &CBORType::Integer(_)) => {
+                return Ordering::Less;
+            }
+            // TODO: implement to support something else than integer keys in maps.
+            _ => return Ordering::Equal,
+        }
+    }
 }

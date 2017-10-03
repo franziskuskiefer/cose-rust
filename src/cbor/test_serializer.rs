@@ -1,5 +1,7 @@
 #[cfg(test)]
-use cbor::cbor::{CBORType, CBORMap};
+use cbor::cbor::{CBORType};
+#[cfg(test)]
+use std::collections::BTreeMap;
 
 #[test]
 fn test_nint() {
@@ -102,36 +104,31 @@ fn test_arr() {
 
 #[test]
 fn test_map() {
-    let empty_map = CBORType::Map(vec![]);
-    assert_eq!(vec![0xa0], empty_map.serialize());
+    let empty_map: BTreeMap<CBORType, CBORType> = BTreeMap::new();
+    assert_eq!(vec![0xa0], CBORType::Map(empty_map).serialize());
 
-    let mut positive_map =
-        CBORType::Map(vec![
-            CBORMap{key: CBORType::Integer(20), value: CBORType::Integer(10)},
-            CBORMap{key: CBORType::Integer(10), value: CBORType::Integer(20)},
-            CBORMap{key: CBORType::Integer(15), value: CBORType::Integer(15)}]);
-    positive_map.sort();
+    let mut positive_map: BTreeMap<CBORType, CBORType> = BTreeMap::new();
+    positive_map.insert(CBORType::Integer(20), CBORType::Integer(10));
+    positive_map.insert(CBORType::Integer(10), CBORType::Integer(20));
+    positive_map.insert(CBORType::Integer(15), CBORType::Integer(15));
     assert_eq!(vec![0xa3, 0x0a, 0x14, 0x0f, 0x0f, 0x14, 0x0a],
-               positive_map.serialize());
+               CBORType::Map(positive_map).serialize());
 
-    let mut negative_map =
-        CBORType::Map(vec![
-            CBORMap{key: CBORType::SignedInteger(-4), value: CBORType::Integer(10)},
-            CBORMap{key: CBORType::SignedInteger(-1), value: CBORType::Integer(20)},
-            CBORMap{key: CBORType::SignedInteger(-5), value: CBORType::Integer(15)},
-            CBORMap{key: CBORType::SignedInteger(-6), value: CBORType::Integer(10)}]);
-    negative_map.sort();
+    let mut negative_map: BTreeMap<CBORType, CBORType> = BTreeMap::new();
+    negative_map.insert(CBORType::SignedInteger(-4), CBORType::Integer(10));
+    negative_map.insert(CBORType::SignedInteger(-1), CBORType::Integer(20));
+    negative_map.insert(CBORType::SignedInteger(-5), CBORType::Integer(15));
+    negative_map.insert(CBORType::SignedInteger(-6), CBORType::Integer(10));
     assert_eq!(vec![0xa4, 0x25, 0x0a, 0x24, 0x0f, 0x23, 0x0a, 0x20, 0x14],
-               negative_map.serialize());
+               CBORType::Map(negative_map).serialize());
 
-    let mut mixed_map =
-        CBORType::Map(vec![
-            CBORMap{key: CBORType::Integer(0), value: CBORType::Integer(10)},
-            CBORMap{key: CBORType::SignedInteger(-10), value: CBORType::Integer(20)},
-            CBORMap{key: CBORType::Integer(15), value: CBORType::Integer(10)}]);
-    mixed_map.sort();
+
+    let mut mixed_map: BTreeMap<CBORType, CBORType> = BTreeMap::new();
+    mixed_map.insert(CBORType::Integer(0), CBORType::Integer(10));
+    mixed_map.insert(CBORType::SignedInteger(-10), CBORType::Integer(20));
+    mixed_map.insert(CBORType::Integer(15), CBORType::Integer(15));
     assert_eq!(vec![0xa3, 0x29, 0x14, 0x00, 0x0a, 0x0f, 0x0f],
-               mixed_map.serialize());
+               CBORType::Map(mixed_map).serialize());
 }
 
 #[test]
