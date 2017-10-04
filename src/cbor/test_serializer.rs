@@ -122,13 +122,25 @@ fn test_map() {
     assert_eq!(vec![0xa4, 0x25, 0x0a, 0x24, 0x0f, 0x23, 0x0a, 0x20, 0x14],
                CborType::Map(negative_map).serialize());
 
-
     let mut mixed_map: BTreeMap<CborType, CborType> = BTreeMap::new();
     mixed_map.insert(CborType::Integer(0), CborType::Integer(10));
     mixed_map.insert(CborType::SignedInteger(-10), CborType::Integer(20));
     mixed_map.insert(CborType::Integer(15), CborType::Integer(15));
     assert_eq!(vec![0xa3, 0x29, 0x14, 0x00, 0x0a, 0x0f, 0x0f],
                CborType::Map(mixed_map).serialize());
+}
+
+#[test]
+#[ignore]
+// XXX: The string isn't put into the map at the moment, so we can't actually
+//      test this.
+fn test_invalid_map() {
+    let mut invalid_map: BTreeMap<CborType, CborType> = BTreeMap::new();
+    invalid_map.insert(CborType::SignedInteger(-10), CborType::Integer(20));
+    invalid_map.insert(CborType::String("0".to_string()), CborType::Integer(10));
+    invalid_map.insert(CborType::Integer(15), CborType::Integer(15));
+    let expected:Vec<u8> = vec![];
+    assert_eq!(expected, CborType::Map(invalid_map).serialize());
 }
 
 #[test]

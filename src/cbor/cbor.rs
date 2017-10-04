@@ -16,6 +16,14 @@ pub enum CborType {
     Map(BTreeMap<CborType, CborType>),
 }
 
+#[derive(Debug)]
+pub enum CborError {
+    CborParsingFailed,
+    CborEncodingFailed,
+    InvalidCborObject,
+    InvalidMapKey,
+}
+
 macro_rules! unpack {
    ($to:tt, $var:ident) => (
         match $var {
