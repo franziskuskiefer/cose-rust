@@ -6,32 +6,32 @@ use std::cmp::Ordering;
 #[derive(PartialEq)]
 #[derive(PartialOrd)]
 #[derive(Eq)]
-pub enum CBORType {
+pub enum CborType {
     Integer(u64),
     SignedInteger(i64),
-    Tag(u64, Box<CBORType>),
+    Tag(u64, Box<CborType>),
     Bytes(Vec<u8>),
     String(String),
-    Array(Vec<CBORType>),
-    Map(BTreeMap<CBORType, CBORType>),
+    Array(Vec<CborType>),
+    Map(BTreeMap<CborType, CborType>),
 }
 
 macro_rules! unpack {
    ($to:tt, $var:ident) => (
         match $var {
-            &CBORType::$to(ref cbor_object) => {
+            &CborType::$to(ref cbor_object) => {
                 cbor_object
             }
             // XXX: This needs handling!
-            _ => return Err("Error unpacking a CBORType."),
+            _ => return Err("Error unpacking a CborType."),
         };
     )
 }
 
-impl Ord for CBORType {
+impl Ord for CborType {
     fn cmp(&self, other: &Self) -> Ordering {
         match (self, other) {
-            (&CBORType::Integer(x), &CBORType::Integer(y)) => {
+            (&CborType::Integer(x), &CborType::Integer(y)) => {
                 if x < y {
                     return Ordering::Less;
                 } else if x == y {
@@ -40,7 +40,7 @@ impl Ord for CBORType {
                     return Ordering::Greater;
                 }
             }
-            (&CBORType::SignedInteger(x), &CBORType::SignedInteger(y)) => {
+            (&CborType::SignedInteger(x), &CborType::SignedInteger(y)) => {
                 if x < y {
                     return Ordering::Less;
                 } else if x == y {
@@ -49,10 +49,10 @@ impl Ord for CBORType {
                     return Ordering::Greater;
                 }
             }
-            (&CBORType::Integer(_), &CBORType::SignedInteger(_)) => {
+            (&CborType::Integer(_), &CborType::SignedInteger(_)) => {
                 return Ordering::Greater;
             }
-            (&CBORType::SignedInteger(_), &CBORType::Integer(_)) => {
+            (&CborType::SignedInteger(_), &CborType::Integer(_)) => {
                 return Ordering::Less;
             }
             // TODO: implement to support something else than integer keys in maps.

@@ -1,5 +1,5 @@
 #[cfg(test)]
-use cbor::cbor::{CBORType};
+use cbor::cbor::{CborType};
 #[cfg(test)]
 use std::collections::BTreeMap;
 
@@ -19,7 +19,7 @@ fn test_nint() {
                    expected: vec![0x3b, 0x3f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfe] },
     ];
     for testcase in testcases {
-        let cbor = CBORType::SignedInteger(testcase.value);
+        let cbor = CborType::SignedInteger(testcase.value);
         assert_eq!(testcase.expected, cbor.serialize());
     }
 }
@@ -43,7 +43,7 @@ fn test_bstr() {
 
     ];
     for testcase in testcases {
-        let cbor = CBORType::Bytes(testcase.value);
+        let cbor = CborType::Bytes(testcase.value);
         assert_eq!(testcase.expected, cbor.serialize());
     }
 }
@@ -62,7 +62,7 @@ fn test_tstr() {
         Testcase { value: String::from("水"), expected: vec![0x63, 0xe6, 0xb0, 0xb4] },
     ];
     for testcase in testcases {
-        let cbor = CBORType::String(testcase.value);
+        let cbor = CborType::String(testcase.value);
         assert_eq!(testcase.expected, cbor.serialize());
     }
 }
@@ -70,65 +70,65 @@ fn test_tstr() {
 #[test]
 fn test_arr() {
     struct Testcase {
-        value: Vec<CBORType>,
+        value: Vec<CborType>,
         expected: Vec<u8>,
     }
-    let nested_arr_1 = vec![CBORType::Integer(2), CBORType::Integer(3)];
-    let nested_arr_2 = vec![CBORType::Integer(4), CBORType::Integer(5)];
+    let nested_arr_1 = vec![CborType::Integer(2), CborType::Integer(3)];
+    let nested_arr_2 = vec![CborType::Integer(4), CborType::Integer(5)];
     let testcases: Vec<Testcase> = vec![
         Testcase { value: vec![], expected: vec![0x80] },
-        Testcase { value: vec![CBORType::Integer(1), CBORType::Integer(2), CBORType::Integer(3)],
+        Testcase { value: vec![CborType::Integer(1), CborType::Integer(2), CborType::Integer(3)],
                    expected: vec![0x83, 0x01, 0x02, 0x03] },
-        Testcase { value: vec![CBORType::Integer(1),
-                               CBORType::Array(nested_arr_1),
-                               CBORType::Array(nested_arr_2)],
+        Testcase { value: vec![CborType::Integer(1),
+                               CborType::Array(nested_arr_1),
+                               CborType::Array(nested_arr_2)],
                    expected: vec![0x83, 0x01, 0x82, 0x02, 0x03, 0x82, 0x04, 0x05] },
-        Testcase { value: vec![CBORType::Integer(1), CBORType::Integer(2), CBORType::Integer(3),
-                               CBORType::Integer(4), CBORType::Integer(5), CBORType::Integer(6),
-                               CBORType::Integer(7), CBORType::Integer(8), CBORType::Integer(9),
-                               CBORType::Integer(10), CBORType::Integer(11), CBORType::Integer(12),
-                               CBORType::Integer(13), CBORType::Integer(14), CBORType::Integer(15),
-                               CBORType::Integer(16), CBORType::Integer(17), CBORType::Integer(18),
-                               CBORType::Integer(19), CBORType::Integer(20), CBORType::Integer(21),
-                               CBORType::Integer(22), CBORType::Integer(23), CBORType::Integer(24),
-                               CBORType::Integer(25)],
+        Testcase { value: vec![CborType::Integer(1), CborType::Integer(2), CborType::Integer(3),
+                               CborType::Integer(4), CborType::Integer(5), CborType::Integer(6),
+                               CborType::Integer(7), CborType::Integer(8), CborType::Integer(9),
+                               CborType::Integer(10), CborType::Integer(11), CborType::Integer(12),
+                               CborType::Integer(13), CborType::Integer(14), CborType::Integer(15),
+                               CborType::Integer(16), CborType::Integer(17), CborType::Integer(18),
+                               CborType::Integer(19), CborType::Integer(20), CborType::Integer(21),
+                               CborType::Integer(22), CborType::Integer(23), CborType::Integer(24),
+                               CborType::Integer(25)],
                    expected: vec![0x98, 0x19, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09,
                                   0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11, 0x12, 0x13, 0x14,
                                   0x15, 0x16, 0x17, 0x18, 0x18, 0x18, 0x19] },
     ];
     for testcase in testcases {
-        let cbor = CBORType::Array(testcase.value);
+        let cbor = CborType::Array(testcase.value);
         assert_eq!(testcase.expected, cbor.serialize());
     }
 }
 
 #[test]
 fn test_map() {
-    let empty_map: BTreeMap<CBORType, CBORType> = BTreeMap::new();
-    assert_eq!(vec![0xa0], CBORType::Map(empty_map).serialize());
+    let empty_map: BTreeMap<CborType, CborType> = BTreeMap::new();
+    assert_eq!(vec![0xa0], CborType::Map(empty_map).serialize());
 
-    let mut positive_map: BTreeMap<CBORType, CBORType> = BTreeMap::new();
-    positive_map.insert(CBORType::Integer(20), CBORType::Integer(10));
-    positive_map.insert(CBORType::Integer(10), CBORType::Integer(20));
-    positive_map.insert(CBORType::Integer(15), CBORType::Integer(15));
+    let mut positive_map: BTreeMap<CborType, CborType> = BTreeMap::new();
+    positive_map.insert(CborType::Integer(20), CborType::Integer(10));
+    positive_map.insert(CborType::Integer(10), CborType::Integer(20));
+    positive_map.insert(CborType::Integer(15), CborType::Integer(15));
     assert_eq!(vec![0xa3, 0x0a, 0x14, 0x0f, 0x0f, 0x14, 0x0a],
-               CBORType::Map(positive_map).serialize());
+               CborType::Map(positive_map).serialize());
 
-    let mut negative_map: BTreeMap<CBORType, CBORType> = BTreeMap::new();
-    negative_map.insert(CBORType::SignedInteger(-4), CBORType::Integer(10));
-    negative_map.insert(CBORType::SignedInteger(-1), CBORType::Integer(20));
-    negative_map.insert(CBORType::SignedInteger(-5), CBORType::Integer(15));
-    negative_map.insert(CBORType::SignedInteger(-6), CBORType::Integer(10));
+    let mut negative_map: BTreeMap<CborType, CborType> = BTreeMap::new();
+    negative_map.insert(CborType::SignedInteger(-4), CborType::Integer(10));
+    negative_map.insert(CborType::SignedInteger(-1), CborType::Integer(20));
+    negative_map.insert(CborType::SignedInteger(-5), CborType::Integer(15));
+    negative_map.insert(CborType::SignedInteger(-6), CborType::Integer(10));
     assert_eq!(vec![0xa4, 0x25, 0x0a, 0x24, 0x0f, 0x23, 0x0a, 0x20, 0x14],
-               CBORType::Map(negative_map).serialize());
+               CborType::Map(negative_map).serialize());
 
 
-    let mut mixed_map: BTreeMap<CBORType, CBORType> = BTreeMap::new();
-    mixed_map.insert(CBORType::Integer(0), CBORType::Integer(10));
-    mixed_map.insert(CBORType::SignedInteger(-10), CBORType::Integer(20));
-    mixed_map.insert(CBORType::Integer(15), CBORType::Integer(15));
+    let mut mixed_map: BTreeMap<CborType, CborType> = BTreeMap::new();
+    mixed_map.insert(CborType::Integer(0), CborType::Integer(10));
+    mixed_map.insert(CborType::SignedInteger(-10), CborType::Integer(20));
+    mixed_map.insert(CborType::Integer(15), CborType::Integer(15));
     assert_eq!(vec![0xa3, 0x29, 0x14, 0x00, 0x0a, 0x0f, 0x0f],
-               CBORType::Map(mixed_map).serialize());
+               CborType::Map(mixed_map).serialize());
 }
 
 #[test]
@@ -153,7 +153,7 @@ fn test_integer() {
                    expected: vec![0x1b, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff] },
     ];
     for testcase in testcases {
-        let cbor = CBORType::Integer(testcase.value);
+        let cbor = CborType::Integer(testcase.value);
         assert_eq!(testcase.expected, cbor.serialize());
     }
 }

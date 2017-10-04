@@ -1,5 +1,5 @@
 use std::collections::BTreeMap;
-use cbor::cbor::{CBORType};
+use cbor::cbor::{CborType};
 
 // pub enum CborType<'a> {
 //     UInt(u64),
@@ -86,7 +86,7 @@ fn encode_tstr(output: &mut Vec<u8>, tstr: &String) {
 
 /// The major type is 4. The number of items is encoded as with positive integers. Then follows the
 /// encodings of the items themselves.
-fn encode_array(output: &mut Vec<u8>, array: &[CBORType]) {
+fn encode_array(output: &mut Vec<u8>, array: &[CborType]) {
     common_encode_unsigned(output, 4, array.len() as u64);
     for element in array {
         let element_encoded = element.serialize();
@@ -99,7 +99,7 @@ fn encode_array(output: &mut Vec<u8>, array: &[CBORType]) {
 /// The major type is 5. The number of pairs is encoded as with positive integers. Then follows the
 /// encodings of each key, value pair. In Canonical CBOR, the keys must be sorted lowest value to
 /// highest.
-fn encode_map(output: &mut Vec<u8>, map: &BTreeMap<CBORType, CBORType>) {
+fn encode_map(output: &mut Vec<u8>, map: &BTreeMap<CborType, CborType>) {
     common_encode_unsigned(output, 5, map.len() as u64);
     for (key, value) in map {
         let key_encoded = key.serialize();
@@ -113,17 +113,17 @@ fn encode_map(output: &mut Vec<u8>, map: &BTreeMap<CBORType, CBORType>) {
     }
 }
 
-impl CBORType {
+impl CborType {
     /// Serialize a Cbor object.
     pub fn serialize(&self) -> Vec<u8> {
         let mut bytes: Vec<u8> = Vec::new();
         match self {
-            &CBORType::Integer(ref unsigned) => encode_unsigned(&mut bytes, *unsigned),
-            &CBORType::SignedInteger(ref negative) => encode_negative(&mut bytes, *negative),
-            &CBORType::Bytes(ref bstr) => encode_bstr(&mut bytes, &bstr),
-            &CBORType::String(ref tstr) => encode_tstr(&mut bytes, &tstr),
-            &CBORType::Array(ref arr) => encode_array(&mut bytes, &arr),
-            &CBORType::Map(ref map) => encode_map(&mut bytes, &map),
+            &CborType::Integer(ref unsigned) => encode_unsigned(&mut bytes, *unsigned),
+            &CborType::SignedInteger(ref negative) => encode_negative(&mut bytes, *negative),
+            &CborType::Bytes(ref bstr) => encode_bstr(&mut bytes, &bstr),
+            &CborType::String(ref tstr) => encode_tstr(&mut bytes, &tstr),
+            &CborType::Array(ref arr) => encode_array(&mut bytes, &arr),
+            &CborType::Map(ref map) => encode_map(&mut bytes, &map),
             // TODO: Do we need to handle tag?
             _ => return Vec::new(),
         };
