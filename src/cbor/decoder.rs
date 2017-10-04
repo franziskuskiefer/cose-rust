@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 use std::io::{Cursor, Read, Seek, SeekFrom};
-use cbor::cbor::{CBORType};
+use cbor::cbor::{CborType};
 
 /// Struct holding a cursor and additional information for decoding.
 #[derive(Debug)]
@@ -45,30 +45,30 @@ impl DecoderCursor {
         Ok(val)
     }
 
-    fn read_signed_int(&mut self) -> Result<CBORType, &'static str> {
+    fn read_signed_int(&mut self) -> Result<CborType, &'static str> {
         let uint = self.read_int().unwrap();
         if uint > i64::max_value() as u64 {
             return Err("Signed integer doesn't fit in a i64 (too large)");
         }
         let result: i64 = -1 - uint as i64;
-        Ok(CBORType::SignedInteger(result))
+        Ok(CborType::SignedInteger(result))
     }
 
     /// Read an array of data items and return it.
-    fn read_array(&mut self) -> Result<CBORType, &'static str> {
+    fn read_array(&mut self) -> Result<CborType, &'static str> {
         // Create a new array.
-        let mut array: Vec<CBORType> = Vec::new();
+        let mut array: Vec<CborType> = Vec::new();
         // Read the length of the array.
         let num_items = self.read_int().unwrap();
         // Decode each of the num_items data items.
         for _ in 0..num_items {
             array.push(self.decode_item().unwrap());
         }
-        Ok(CBORType::Array(array))
+        Ok(CborType::Array(array))
     }
 
     /// Read a byte string and return it as hex string.
-    fn read_byte_string(&mut self) -> Result<CBORType, &'static str> {
+    fn read_byte_string(&mut self) -> Result<CborType, &'static str> {
         let length = self.read_int().unwrap();
         if length > usize::max_value() as u64 {
             return Err("Byte array is too large to allocate.");
@@ -82,35 +82,35 @@ impl DecoderCursor {
         if self.cursor.read(&mut byte_string).unwrap() != length {
             return Err("Couldn't read enough data for this byte string");
         }
-        Ok(CBORType::Bytes(byte_string))
+        Ok(CborType::Bytes(byte_string))
     }
 
     /// Read a map.
-    fn read_map(&mut self) -> Result<CBORType, &'static str> {
+    fn read_map(&mut self) -> Result<CborType, &'static str> {
         // XXX: check for duplicate keys.
         let num_items = self.read_int().unwrap();
         // Create a new array.
-        let mut map: BTreeMap<CBORType, CBORType> = BTreeMap::new();
+        let mut map: BTreeMap<CborType, CborType> = BTreeMap::new();
         // Decode each of the num_items (key, data item) pairs.
         for _ in 0..num_items {
             let key_val = self.decode_item().unwrap();
             let item_value = self.decode_item().unwrap();
             map.insert(key_val, item_value);
         }
-        Ok(CBORType::Map(map))
+        Ok(CborType::Map(map))
     }
 
     /// Decodes the next item in DecoderCursor.
-    pub fn decode_item(&mut self) -> Result<CBORType, &'static str> {
+    pub fn decode_item(&mut self) -> Result<CborType, &'static str> {
         let pos = self.cursor.position() as usize;
         let major_type = self.cursor.get_ref()[pos] >> 5;
         match major_type {
-            0 => return Ok(CBORType::Integer(self.read_int().unwrap())),
+            0 => return Ok(CborType::Integer(self.read_int().unwrap())),
             1 => return Ok(self.read_signed_int().unwrap()),
             2 => return Ok(self.read_byte_string().unwrap()),
             4 => return Ok(self.read_array().unwrap()),
             5 => return Ok(self.read_map().unwrap()),
-            6 => return Ok(CBORType::Tag(self.read_int().unwrap(),
+            6 => return Ok(CborType::Tag(self.read_int().unwrap(),
                                          Box::new(self.decode_item().unwrap()))),
             _ => return Err("Malformed first byte"),
         }
@@ -118,7 +118,7 @@ impl DecoderCursor {
 }
 
 /// Read the CBOR structure in bytes and return it as a CBOR object.
-pub fn decode(bytes: Vec<u8>) -> Result<CBORType, &'static str> {
+pub fn decode(bytes: Vec<u8>) -> Result<CborType, &'static str> {
     let mut decoder_cursor = DecoderCursor {
         cursor: Cursor::new(bytes),
     };

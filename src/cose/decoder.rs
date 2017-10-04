@@ -1,5 +1,5 @@
 use cbor::decoder::*;
-use cbor::cbor::CBORType;
+use cbor::cbor::CborType;
 
 #[derive(Debug)]
 pub enum CoseType {
@@ -71,12 +71,12 @@ pub fn decode_signature(bytes: Vec<u8>, payload: &[u8]) -> Result<CoseSignatures
     // This has to be a COSE_Sign object, which is a tagged array.
     let tagged_cose_sign = decode(bytes)?;
     let cose_sign_array = match tagged_cose_sign {
-        CBORType::Tag(tag, cose_sign) => {
+        CborType::Tag(tag, cose_sign) => {
             if tag != CoseType::COSESign as u64 {
                 return Err("This is not a COSE_Sign object 0");
             }
             match *cose_sign {
-                CBORType::Array(values) => values,
+                CborType::Array(values) => values,
                 _ => return Err("This is not a COSE_Sign object 1"),
             }
         },
@@ -104,11 +104,11 @@ pub fn decode_signature(bytes: Vec<u8>, payload: &[u8]) -> Result<CoseSignatures
     let protected_signature_header = decode(protected_signature_header_bytes.clone())?;
     // TODO: This isn't quite right due to order... (it's a map)
     let signature_algorithm_value = match protected_signature_header {
-        CBORType::Map(values) => {
+        CborType::Map(values) => {
             if values.len() < 1 {
                 return Err("This is not a valid COSE signature object. Protected header is empty.");
             }
-            let val = values.get(&CBORType::Integer(1)); //.unwrap().clone()
+            let val = values.get(&CborType::Integer(1)); //.unwrap().clone()
             match val {
                 Some(x) => x.clone(),
                 _ => return Err("Invalid COSE signature: expected alg header key (1)."),
@@ -117,7 +117,7 @@ pub fn decode_signature(bytes: Vec<u8>, payload: &[u8]) -> Result<CoseSignatures
         _ => return Err("Invalid COSE signature object: protected header is not a map."),
     };
     match signature_algorithm_value {
-        CBORType::SignedInteger(val) => {
+        CborType::SignedInteger(val) => {
             if val != -7 {
                 return Err("Invalid COSE signature: expected ES256 (-7).");
             }
@@ -129,7 +129,7 @@ pub fn decode_signature(bytes: Vec<u8>, payload: &[u8]) -> Result<CoseSignatures
     // Read the key ID from the unprotected header.
     let unprotected_signature_header = &cose_signature[1];
     let (key_id_key, key_id_value) = match unprotected_signature_header {
-        &CBORType::Map(ref value) => {
+        &CborType::Map(ref value) => {
             if value.len() < 1 {
                 return Err("Invalid COSE signature: unprotected header is empty.");
             }
@@ -139,7 +139,7 @@ pub fn decode_signature(bytes: Vec<u8>, payload: &[u8]) -> Result<CoseSignatures
         _ => return Err("Invalid COSE signature: unprotected header is not a map."),
     };
     match key_id_key {
-        &CBORType::Integer(ref val) => {
+        &CborType::Integer(ref val) => {
             if val != &4 {
                 return Err("Invalid COSE signature: expected kid header key (4).");
             }

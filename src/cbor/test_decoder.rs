@@ -7,7 +7,7 @@ use std::collections::BTreeMap;
 
 // First test all the basic types
 #[cfg(test)]
-fn test_decoder(bytes: Vec<u8>, expected: CBORType) {
+fn test_decoder(bytes: Vec<u8>, expected: CborType) {
     assert_eq!(decode(bytes).unwrap(), expected);
 }
 
@@ -15,14 +15,14 @@ fn test_decoder(bytes: Vec<u8>, expected: CBORType) {
 fn test_integer(bytes: Vec<u8>, expected: u64) {
     let decoded = decode(bytes).unwrap();
     match decoded {
-        CBORType::Integer(val) => assert_eq!(val, expected),
+        CborType::Integer(val) => assert_eq!(val, expected),
         _ => assert_eq!(1, 0),
     }
 }
 
 #[cfg(test)]
 fn test_integer_all(bytes: Vec<u8>, expected_value: u64) {
-    let expected = CBORType::Integer(expected_value);
+    let expected = CborType::Integer(expected_value);
     test_decoder(bytes.clone(), expected);
     test_integer(bytes, expected_value);
 }
@@ -64,10 +64,10 @@ fn test_integer_objects() {
 }
 
 #[cfg(test)]
-fn test_tag(bytes: Vec<u8>, expected_tag: u64, expected_value: CBORType) {
+fn test_tag(bytes: Vec<u8>, expected_tag: u64, expected_value: CborType) {
     let decoded = decode(bytes).unwrap();
     match decoded {
-        CBORType::Tag(tag, value) => {
+        CborType::Tag(tag, value) => {
             assert_eq!(expected_tag, tag);
             assert_eq!(expected_value, *value);
         },
@@ -79,8 +79,8 @@ fn test_tag(bytes: Vec<u8>, expected_tag: u64, expected_value: CBORType) {
 fn test_tagged_objects() {
     let bytes: Vec<u8> = vec![0xD2, 0x02];
     let expected_tag_value = 0x12;
-    let expected_value = CBORType::Integer(2);
-    let expected = CBORType::Tag(expected_tag_value, Box::new(expected_value.clone()));
+    let expected_value = CborType::Integer(2);
+    let expected = CborType::Tag(expected_tag_value, Box::new(expected_value.clone()));
     test_decoder(bytes.clone(), expected);
     test_tag(bytes, expected_tag_value, expected_value);
 }
@@ -89,43 +89,43 @@ fn test_tagged_objects() {
 fn test_arrays() {
     // []
     let bytes: Vec<u8> = vec![0x80];
-    let expected = CBORType::Array(vec![]);
+    let expected = CborType::Array(vec![]);
     test_decoder(bytes, expected);
 
     // [1, 2, 3]
     let bytes: Vec<u8> = vec![0x83, 0x01, 0x02, 0x03];
     let tmp = vec![
-        CBORType::Integer(1),
-        CBORType::Integer(2),
-        CBORType::Integer(3),
+        CborType::Integer(1),
+        CborType::Integer(2),
+        CborType::Integer(3),
     ];
-    let expected = CBORType::Array(tmp);
+    let expected = CborType::Array(tmp);
     test_decoder(bytes, expected);
 
     // [1, [2, 3], [4, 5]]
     let bytes: Vec<u8> = vec![0x83, 0x01, 0x82, 0x02, 0x03, 0x82, 0x04, 0x05];
-    let tmp1 = vec![CBORType::Integer(2), CBORType::Integer(3)];
-    let tmp2 = vec![CBORType::Integer(4), CBORType::Integer(5)];
+    let tmp1 = vec![CborType::Integer(2), CborType::Integer(3)];
+    let tmp2 = vec![CborType::Integer(4), CborType::Integer(5)];
     let tmp = vec![
-        CBORType::Integer(1),
-        CBORType::Array(tmp1),
-        CBORType::Array(tmp2),
+        CborType::Integer(1),
+        CborType::Array(tmp1),
+        CborType::Array(tmp2),
     ];
-    let expected = CBORType::Array(tmp);
+    let expected = CborType::Array(tmp);
     test_decoder(bytes, expected);
 
     // [1, [[[[1]]]], [1]]
     let bytes: Vec<u8> = vec![0x83, 0x01, 0x81, 0x81, 0x81, 0x81, 0x01, 0x81, 0x02];
     let tmp = vec![
-        CBORType::Integer(1),
-        CBORType::Array(vec![
-            CBORType::Array(vec![
-                CBORType::Array(vec![
-                    CBORType::Array(vec![
-                        CBORType::Integer(1)])])])]),
-        CBORType::Array(vec![CBORType::Integer(2)]),
+        CborType::Integer(1),
+        CborType::Array(vec![
+            CborType::Array(vec![
+                CborType::Array(vec![
+                    CborType::Array(vec![
+                        CborType::Integer(1)])])])]),
+        CborType::Array(vec![CborType::Integer(2)]),
     ];
-    let expected = CBORType::Array(tmp);
+    let expected = CborType::Array(tmp);
     test_decoder(bytes, expected);
 
     let bytes: Vec<u8> = vec![0x98, 0x1A, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06,
@@ -136,89 +136,89 @@ fn test_arrays() {
     // [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
     //  21, 22, 23, 24, 25, [[[[5]]], [1234567890]]]
     let tmp = vec![
-        CBORType::Integer(1),
-        CBORType::Integer(2),
-        CBORType::Integer(3),
-        CBORType::Integer(4),
-        CBORType::Integer(5),
-        CBORType::Integer(6),
-        CBORType::Integer(7),
-        CBORType::Integer(8),
-        CBORType::Integer(9),
-        CBORType::Integer(10),
-        CBORType::Integer(11),
-        CBORType::Integer(12),
-        CBORType::Integer(13),
-        CBORType::Integer(14),
-        CBORType::Integer(15),
-        CBORType::Integer(16),
-        CBORType::Integer(17),
-        CBORType::Integer(18),
-        CBORType::Integer(19),
-        CBORType::Integer(20),
-        CBORType::Integer(21),
-        CBORType::Integer(22),
-        CBORType::Integer(23),
-        CBORType::Integer(24),
-        CBORType::Integer(25),
-        CBORType::Array(vec![
-            CBORType::Array(vec![
-                CBORType::Array(vec![
-                    CBORType::Array(vec![
-                        CBORType::Integer(5)])])]),
-            CBORType::Array(vec![CBORType::Integer(1234567890)])])
+        CborType::Integer(1),
+        CborType::Integer(2),
+        CborType::Integer(3),
+        CborType::Integer(4),
+        CborType::Integer(5),
+        CborType::Integer(6),
+        CborType::Integer(7),
+        CborType::Integer(8),
+        CborType::Integer(9),
+        CborType::Integer(10),
+        CborType::Integer(11),
+        CborType::Integer(12),
+        CborType::Integer(13),
+        CborType::Integer(14),
+        CborType::Integer(15),
+        CborType::Integer(16),
+        CborType::Integer(17),
+        CborType::Integer(18),
+        CborType::Integer(19),
+        CborType::Integer(20),
+        CborType::Integer(21),
+        CborType::Integer(22),
+        CborType::Integer(23),
+        CborType::Integer(24),
+        CborType::Integer(25),
+        CborType::Array(vec![
+            CborType::Array(vec![
+                CborType::Array(vec![
+                    CborType::Array(vec![
+                        CborType::Integer(5)])])]),
+            CborType::Array(vec![CborType::Integer(1234567890)])])
     ];
-    let expected = CBORType::Array(tmp);
+    let expected = CborType::Array(tmp);
     test_decoder(bytes, expected);
 }
 
 #[test]
 fn test_signed_integer() {
     let bytes: Vec<u8> = vec![0x20];
-    let expected = CBORType::SignedInteger(-1);
+    let expected = CborType::SignedInteger(-1);
     test_decoder(bytes, expected);
 
     let bytes = vec![0x29];
-    let expected = CBORType::SignedInteger(-10);
+    let expected = CborType::SignedInteger(-10);
     test_decoder(bytes, expected);
 
     let bytes = vec![0x38, 0x63];
-    let expected = CBORType::SignedInteger(-100);
+    let expected = CborType::SignedInteger(-100);
     test_decoder(bytes, expected);
 
     let bytes = vec![0x39, 0x03, 0xe7];
-    let expected = CBORType::SignedInteger(-1000);
+    let expected = CborType::SignedInteger(-1000);
     test_decoder(bytes, expected);
 
     let bytes = vec![0x39, 0x27, 0x0F];
-    let expected = CBORType::SignedInteger(-10000);
+    let expected = CborType::SignedInteger(-10000);
     test_decoder(bytes, expected);
 
     let bytes = vec![0x3A, 0x00, 0x01, 0x86, 0x9F];
-    let expected = CBORType::SignedInteger(-100000);
+    let expected = CborType::SignedInteger(-100000);
     test_decoder(bytes, expected);
 
     let bytes = vec![0x3B, 0x00, 0x00, 0x00, 0xE8, 0xD4, 0xA5, 0x0F, 0xFF];
-    let expected = CBORType::SignedInteger(-1000000000000);
+    let expected = CborType::SignedInteger(-1000000000000);
     test_decoder(bytes, expected);
 }
 
 #[test]
 fn test_byte_strings() {
     let bytes: Vec<u8> = vec![0x40];
-    let expected = CBORType::Bytes(vec![]);
+    let expected = CborType::Bytes(vec![]);
     test_decoder(bytes, expected);
 
     // 01020304
     let bytes: Vec<u8> = vec![0x44, 0x01, 0x02, 0x03, 0x04];
-    let expected = CBORType::Bytes(vec![0x01, 0x02, 0x03, 0x04]);
+    let expected = CborType::Bytes(vec![0x01, 0x02, 0x03, 0x04]);
     test_decoder(bytes, expected);
 
     // 0102030405060708090A0B0C0D0E0F10203040506070
     let bytes: Vec<u8> = vec![0x56, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
                               0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
                               0x10, 0x20, 0x30, 0x40, 0x50, 0x60, 0x70];
-    let expected = CBORType::Bytes(vec![0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+    let expected = CborType::Bytes(vec![0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
                                         0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
                                         0x10, 0x20, 0x30, 0x40, 0x50, 0x60, 0x70]);
     test_decoder(bytes, expected);
@@ -259,7 +259,7 @@ fn test_byte_strings() {
                               0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
                               0xFF];
     let expected =
-        CBORType::Bytes(vec![0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        CborType::Bytes(vec![0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
                              0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
                              0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
                              0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
@@ -301,23 +301,23 @@ fn test_byte_strings() {
 fn test_maps() {
     // {}
     let bytes: Vec<u8> = vec![0xa0];
-    let expected: BTreeMap<CBORType, CBORType> = BTreeMap::new();
-    test_decoder(bytes, CBORType::Map(expected));
+    let expected: BTreeMap<CborType, CborType> = BTreeMap::new();
+    test_decoder(bytes, CborType::Map(expected));
 
     // {1: 2, 3: 4}
     let bytes: Vec<u8> = vec![0xa2, 0x01, 0x02, 0x03, 0x04];
-    let mut expected: BTreeMap<CBORType, CBORType> = BTreeMap::new();
-    expected.insert(CBORType::Integer(1), CBORType::Integer(2));
-    expected.insert(CBORType::Integer(3), CBORType::Integer(4));
-    test_decoder(bytes, CBORType::Map(expected));
+    let mut expected: BTreeMap<CborType, CborType> = BTreeMap::new();
+    expected.insert(CborType::Integer(1), CborType::Integer(2));
+    expected.insert(CborType::Integer(3), CborType::Integer(4));
+    test_decoder(bytes, CborType::Map(expected));
 
     // TODO: strings aren't properly supported as keys yet.
     // {"a": 1, "b": [2, 3]}
     // let bytes: Vec<u8> = vec![0xa2, 0x61, 0x61, 0x01, 0x61, 0x62, 0x82, 0x02, 0x03];
     // let expected =
-    //     CBORType::Map(vec![
-    //         CBORMap{key: CBORType::Integer(1), value: CBORType::Integer(2)},
-    //         CBORMap{key: CBORType::Integer(3), value: CBORType::Integer(4)}]);
+    //     CborType::Map(vec![
+    //         CborMap{key: CborType::Integer(1), value: CborType::Integer(2)},
+    //         CborMap{key: CborType::Integer(3), value: CborType::Integer(4)}]);
     // test_decoder(bytes, expected);
 
     // let bytes: Vec<u8> = vec![0x82, 0x61, 0x61, 0xa1, 0x61, 0x62, 0x61, 0x63];
