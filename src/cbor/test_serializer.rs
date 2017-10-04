@@ -169,3 +169,12 @@ fn test_integer() {
         assert_eq!(testcase.expected, cbor.serialize());
     }
 }
+
+#[test]
+fn test_tagged_item() {
+    let cbor = CborType::Tag(0x12, Box::new(CborType::Integer(2).clone()));
+    assert_eq!(vec![0xD2, 0x02], cbor.serialize());
+
+    let cbor = CborType::Tag(0x62, Box::new(CborType::Array(vec![]).clone()));
+    assert_eq!(vec![0xD8, 0x62, 0x80], cbor.serialize());
+}

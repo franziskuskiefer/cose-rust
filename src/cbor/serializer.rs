@@ -63,9 +63,7 @@ fn encode_negative(output: &mut Vec<u8>, negative: i64) -> Result<(), CborError>
 /// the actual data.
 fn encode_bytes(output: &mut Vec<u8>, bstr: &[u8]) -> Result<(), CborError> {
     common_encode_unsigned(output, 2, bstr.len() as u64);
-    for byte in bstr {
-        output.push(*byte);
-    }
+    output.extend_from_slice(bstr);
     return Ok(());
 }
 
@@ -73,9 +71,7 @@ fn encode_bytes(output: &mut Vec<u8>, bstr: &[u8]) -> Result<(), CborError> {
 fn encode_string(output: &mut Vec<u8>, tstr: &String) -> Result<(), CborError> {
     let utf8_bytes = tstr.as_bytes();
     common_encode_unsigned(output, 3, utf8_bytes.len() as u64);
-    for byte in utf8_bytes {
-        output.push(*byte);
-    }
+    output.extend_from_slice(&utf8_bytes);
     return Ok(());
 }
 
@@ -84,10 +80,7 @@ fn encode_string(output: &mut Vec<u8>, tstr: &String) -> Result<(), CborError> {
 fn encode_array(output: &mut Vec<u8>, array: &[CborType]) -> Result<(), CborError> {
     common_encode_unsigned(output, 4, array.len() as u64);
     for element in array {
-        let element_encoded = element.serialize();
-        for byte in element_encoded {
-            output.push(byte);
-        }
+        output.append(&mut element.serialize());
     }
     return Ok(());
 }
@@ -112,11 +105,15 @@ fn encode_map(output: &mut Vec<u8>, map: &BTreeMap<CborType, CborType>) -> Resul
         for byte in key_encoded {
             output.push(byte);
         }
-        let value_encoded = value.serialize();
-        for byte in value_encoded {
-            output.push(byte);
-        }
+        output.append(&mut value.serialize());
     }
+    return Ok(());
+}
+
+#[allow(unused_variables)]
+fn encode_tag(output: &mut Vec<u8>, tag: &u64, val: &Box<CborType>) -> Result<(), CborError> {
+    common_encode_unsigned(output, 6, *tag);
+    output.append(&mut val.serialize());
     return Ok(());
 }
 
@@ -131,8 +128,7 @@ impl CborType {
             &CborType::String(ref tstr) => encode_string(&mut bytes, &tstr),
             &CborType::Array(ref arr) => encode_array(&mut bytes, &arr),
             &CborType::Map(ref map) => encode_map(&mut bytes, &map),
-            // TODO: Do we need to handle tag?
-            _ => return Vec::new(),
+            &CborType::Tag(ref t, ref val) => encode_tag(&mut bytes, t, val),
         };
         match rv {
             Err(_) => Vec::new(),
