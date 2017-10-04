@@ -1,14 +1,5 @@
 use std::collections::BTreeMap;
-use cbor::cbor::{CborType};
-
-// pub enum CborType<'a> {
-//     UInt(u64),
-//     NInt(i64),
-//     BStr(&'a [u8]),
-//     TStr(&'a String),
-//     Arr(&'a [CborType<'a>]),
-//     Map(&'a BTreeMap<i64, CborType<'a>>), // TODO: find out what key value range we really have to support
-// }
+use cbor::cbor::CborType;
 
 /// Given a vector of bytes to append to, a tag to use, and an unsigned value to encode, uses the
 /// CBOR unsigned integer encoding to represent the given value.

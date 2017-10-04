@@ -105,7 +105,7 @@ pub fn decode_signature(bytes: Vec<u8>, payload: &[u8]) -> Result<Vec<CoseSignat
             if values.len() < 1 {
                 return Err("This is not a valid COSE signature object. Protected header is empty.");
             }
-            let val = values.get(&CborType::Integer(1)); //.unwrap().clone()
+            let val = values.get(&CborType::Integer(1));
             match val {
                 Some(x) => x.clone(),
                 _ => return Err("Invalid COSE signature: expected alg header key (1)."),
