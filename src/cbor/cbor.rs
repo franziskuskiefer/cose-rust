@@ -32,22 +32,10 @@ impl Ord for CborType {
     fn cmp(&self, other: &Self) -> Ordering {
         match (self, other) {
             (&CborType::Integer(x), &CborType::Integer(y)) => {
-                if x < y {
-                    return Ordering::Less;
-                } else if x == y {
-                    return Ordering::Equal;
-                } else {
-                    return Ordering::Greater;
-                }
+                x.cmp(&y)
             }
             (&CborType::SignedInteger(x), &CborType::SignedInteger(y)) => {
-                if x < y {
-                    return Ordering::Less;
-                } else if x == y {
-                    return Ordering::Equal;
-                } else {
-                    return Ordering::Greater;
-                }
+                x.cmp(&y)
             }
             (&CborType::Integer(_), &CborType::SignedInteger(_)) => {
                 return Ordering::Greater;
