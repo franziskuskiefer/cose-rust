@@ -1,10 +1,7 @@
 use cbor::decoder::*;
 use cbor::cbor::CborType;
 
-#[derive(Debug)]
-pub enum CoseType {
-    COSESign = 98,
-}
+const COSE_SIGN_TAG: u64 = 98;
 
 #[derive(Debug)]
 #[derive(PartialEq)]
@@ -67,12 +64,12 @@ pub struct CoseSignatures {
 ///     signature : bstr
 /// ]
 
-pub fn decode_signature(bytes: Vec<u8>, payload: &[u8]) -> Result<CoseSignatures, &'static str> {
+pub fn decode_signature(bytes: Vec<u8>, payload: &[u8]) -> Result<Vec<CoseSignature>, &'static str> {
     // This has to be a COSE_Sign object, which is a tagged array.
     let tagged_cose_sign = decode(bytes)?;
     let cose_sign_array = match tagged_cose_sign {
         CborType::Tag(tag, cose_sign) => {
-            if tag != CoseType::COSESign as u64 {
+            if tag != COSE_SIGN_TAG {
                 return Err("This is not a COSE_Sign object 0");
             }
             match *cose_sign {
@@ -183,7 +180,7 @@ pub fn decode_signature(bytes: Vec<u8>, payload: &[u8]) -> Result<CoseSignatures
         certs: Vec::new(),
         to_verify: bytes_to_verify,
     };
-    let mut result = CoseSignatures { values: Vec::new() };
-    result.values.push(signature);
+    let mut result = Vec::new();
+    result.push(signature);
     Ok(result)
 }
