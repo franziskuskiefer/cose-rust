@@ -14,6 +14,13 @@ fn test_decoder(bytes: Vec<u8>, expected: CborType) {
 }
 
 #[cfg(test)]
+fn test_decoder_error(bytes: Vec<u8>, expected_error: CborError) {
+    let result = decode(bytes);
+    assert!(result.is_err());
+    assert_eq!(result.unwrap_err(), expected_error);
+}
+
+#[cfg(test)]
 fn test_integer(bytes: Vec<u8>, expected: u64) {
     let decoded = decode(bytes).unwrap();
     match decoded {
@@ -315,23 +322,47 @@ fn test_maps() {
 #[test]
 fn test_map_duplicate_keys() {
     let bytes: Vec<u8> = vec![0xa4, 0x01, 0x02, 0x02, 0x03, 0x01, 0x03, 0x04, 0x04];
-    let result = decode(bytes);
-    assert!(result.is_err());
-    assert_eq!(result.unwrap_err(), CborError::DuplicateMapKey);
+    test_decoder_error(bytes, CborError::DuplicateMapKey);
 }
 
 #[test]
 fn test_unsupported_major_type() {
     let bytes: Vec<u8> = vec![0xe0];
-    let result = decode(bytes);
-    assert!(result.is_err());
-    assert_eq!(result.unwrap_err(), CborError::MalformedInput);
+    test_decoder_error(bytes, CborError::MalformedInput);
 }
 
 #[test]
 fn test_tag_with_no_value() {
     let bytes: Vec<u8> = vec![0xc0];
-    let result = decode(bytes);
-    assert!(result.is_err());
-    assert_eq!(result.unwrap_err(), CborError::TruncatedInput);
+    test_decoder_error(bytes, CborError::TruncatedInput);
+}
+
+#[test]
+fn test_truncated_int() {
+    let bytes: Vec<u8> = vec![0x19, 0x03];
+    test_decoder_error(bytes, CborError::TruncatedInput);
+}
+
+#[test]
+fn test_truncated_array() {
+    let bytes: Vec<u8> = vec![0x83, 0x01, 0x02];
+    test_decoder_error(bytes, CborError::TruncatedInput);
+}
+
+#[test]
+fn test_truncated_map() {
+    let bytes: Vec<u8> = vec![0xa2, 0x01, 0x02, 0x00];
+    test_decoder_error(bytes, CborError::TruncatedInput);
+}
+
+#[test]
+fn test_malformed_integer() {
+    let bytes: Vec<u8> = vec![0x1c];
+    test_decoder_error(bytes, CborError::MalformedInput);
+}
+
+#[test]
+fn test_signed_integer_too_large() {
+    let bytes = vec![0x3b, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff];
+    test_decoder_error(bytes, CborError::InputValueOutOfRange);
 }
