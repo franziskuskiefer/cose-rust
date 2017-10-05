@@ -20,6 +20,18 @@ pub struct CoseSignature {
     pub to_verify: Vec<u8>,
 }
 
+macro_rules! unpack {
+   ($to:tt, $var:ident) => (
+        match $var {
+            &CborType::$to(ref cbor_object) => {
+                cbor_object
+            }
+            // XXX: This needs handling!
+            _ => return Err("Error unpacking a CborType."),
+        };
+    )
+}
+
 fn get_map_value(map: &CborType, key: &CborType) -> Result<CborType, &'static str> {
     match map {
         &CborType::Map(ref values) => {
