@@ -1,5 +1,6 @@
+use std::collections::BTreeMap;
 use std::io::{Cursor, Read, Seek, SeekFrom};
-use std::string::String;
+use cbor::cbor::CborType;
 
 /// Struct holding a cursor and additional information for decoding.
 #[derive(Debug)]
@@ -89,16 +90,12 @@ impl DecoderCursor {
         // XXX: check for duplicate keys.
         let num_items = self.read_int().unwrap();
         // Create a new array.
-        let mut map: Vec<CborMap> = Vec::new();
+        let mut map: BTreeMap<CborType, CborType> = BTreeMap::new();
         // Decode each of the num_items (key, data item) pairs.
         for _ in 0..num_items {
             let key_val = self.decode_item().unwrap();
             let item_value = self.decode_item().unwrap();
-            let item = CborMap {
-                key: key_val,
-                value: item_value
-            };
-            map.push(item);
+            map.insert(key_val, item_value);
         }
         Ok(CborType::Map(map))
     }
@@ -118,27 +115,6 @@ impl DecoderCursor {
             _ => return Err("Malformed first byte"),
         }
     }
-}
-
-#[derive(Debug)]
-#[derive(Clone)]
-#[derive(PartialEq)]
-pub struct CborMap {
-    pub key: CborType,
-    pub value: CborType,
-}
-
-#[derive(Debug)]
-#[derive(Clone)]
-#[derive(PartialEq)]
-pub enum CborType {
-    Integer(u64),
-    SignedInteger(i64),
-    Tag(u64, Box<CborType>),
-    Bytes(Vec<u8>),
-    String(String),
-    Array(Vec<CborType>),
-    Map(Vec<CborMap>),
 }
 
 /// Read the CBOR structure in bytes and return it as a CBOR object.

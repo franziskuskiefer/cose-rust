@@ -1,4 +1,5 @@
 use cbor::decoder::*;
+use cbor::cbor::CborType;
 
 const COSE_SIGN_TAG: u64 = 98;
 
@@ -19,16 +20,20 @@ pub struct CoseSignature {
     pub to_verify: Vec<u8>,
 }
 
-macro_rules! unpack {
-   ($to:tt, $var:ident) => (
-        match $var {
-            &CborType::$to(ref cose_object) => {
-                cose_object
+fn get_map_value(map: &CborType, key: &CborType) -> Result<CborType, &'static str> {
+    match map {
+        &CborType::Map(ref values) => {
+            if values.is_empty() {
+                return Err("This map is empty.");
             }
-            // XXX: This needs handling!
-            _ => return Err("This is not a valid COSE signature object X."),
-        };
-    )
+            let val = values.get(key);
+            match val {
+                Some(x) => return Ok(x.clone()),
+                _ => return Err("Couldn't retrieve value for the provided key."),
+            }
+        }
+        _ => return Err("This is not a CborType::Map."),
+    };
 }
 
 /// COSE_Sign = [
@@ -70,7 +75,10 @@ macro_rules! unpack {
 ///     signature : bstr
 /// ]
 
-pub fn decode_signature(bytes: Vec<u8>, payload: &[u8]) -> Result<Vec<CoseSignature>, &'static str> {
+pub fn decode_signature(
+    bytes: Vec<u8>,
+    payload: &[u8],
+) -> Result<Vec<CoseSignature>, &'static str> {
     // This has to be a COSE_Sign object, which is a tagged array.
     let tagged_cose_sign = decode(bytes)?;
     let cose_sign_array = match tagged_cose_sign {
@@ -82,7 +90,7 @@ pub fn decode_signature(bytes: Vec<u8>, payload: &[u8]) -> Result<Vec<CoseSignat
                 CborType::Array(values) => values,
                 _ => return Err("This is not a COSE_Sign object 1"),
             }
-        },
+        }
         _ => return Err("This is not a COSE_Sign object 2"),
     };
     if cose_sign_array.len() != 4 {
@@ -93,7 +101,9 @@ pub fn decode_signature(bytes: Vec<u8>, payload: &[u8]) -> Result<Vec<CoseSignat
 
     // Take the first signature.
     if signatures.len() < 1 {
-        return Err("This is not a valid COSE Signature. Couldn't find a signature object.");
+        return Err(
+            "This is not a valid COSE Signature. Couldn't find a signature object.",
+        );
     }
     let cose_signature = &signatures[0];
     let cose_signature = unpack!(Array, cose_signature);
@@ -105,60 +115,27 @@ pub fn decode_signature(bytes: Vec<u8>, payload: &[u8]) -> Result<Vec<CoseSignat
 
     // Parse the protected signature header.
     let protected_signature_header = decode(protected_signature_header_bytes.clone())?;
-    // This isn't quite right due to order... (it's a map)
-    let signature_algorithm = match protected_signature_header {
-        CborType::Map(values) => {
-            if values.len() < 1 {
-                return Err("This is not a valid COSE signature object. Protected header is empty.");
-            }
-            values[0].clone()
-        },
-        _ => return Err("Invalid COSE signature object: protected header is not a map."),
-    };
-    match signature_algorithm.key {
-        CborType::Integer(val) => {
-            if val != 1 {
-                return Err("Invalid COSE signature: expected alg header key (1).");
-            }
-        },
-        _ => return Err("Invalid COSE signature: header key is not an integer."),
-    };
-    match signature_algorithm.value{
+    // TODO: This isn't quite right due to order... (it's a map)
+    let signature_algorithm = get_map_value(&protected_signature_header, &CborType::Integer(1))?;
+    match signature_algorithm {
         CborType::SignedInteger(val) => {
             if val != -7 {
                 return Err("Invalid COSE signature: expected ES256 (-7).");
             }
-        },
+        }
         _ => return Err("Invalid COSE signature: alg value is not a signed integer."),
     };
     let signature_algorithm = CoseSignatureType::ES256;
 
     // Read the key ID from the unprotected header.
     let unprotected_signature_header = &cose_signature[1];
-    let key_id = match unprotected_signature_header {
-        &CborType::Map(ref value) => {
-            if value.len() < 1 {
-                return Err("Invalid COSE signature: unprotected header is empty.");
-            }
-            value[0].clone()
-        },
-        _ => return Err("Invalid COSE signature: unprotected header is not a map."),
-    };
-    match key_id.key {
-        CborType::Integer(val) => {
-            if val != 4 {
-                return Err("Invalid COSE signature: expected kid header key (4).");
-            }
-        },
-        _ => return Err("Invalid COSE signature: header key is not an integer."),
-    };
-    let key_id_bytes = &key_id.value.clone();
-    let key_id = unpack!(Bytes, key_id_bytes);
+    let key_id = &get_map_value(unprotected_signature_header, &CborType::Integer(4))?;
+    let key_id = unpack!(Bytes, key_id);
 
     // Read the signature bytes.
     let signature_bytes = &cose_signature[2];
     let signature_bytes = unpack!(Bytes, signature_bytes).clone();
-    let mut bytes_to_verify:Vec<u8> = Vec::new();
+    let mut bytes_to_verify: Vec<u8> = Vec::new();
     // XXX: Use encoder for this.
     bytes_to_verify.push(0x69);
     bytes_to_verify.extend_from_slice(b"Signature");
@@ -166,17 +143,21 @@ pub fn decode_signature(bytes: Vec<u8>, payload: &[u8]) -> Result<Vec<CoseSignat
     bytes_to_verify.push(0x40);
     if protected_signature_header_bytes.len() > 23 {
         // XXX: fix this.
-        return Err("Sorry, this is not implemented for protected headers that are longer than 23.");
+        return Err(
+            "Sorry, this is not implemented for protected headers that are longer than 23.",
+        );
     }
-    let tmp:u8 = ((2 << 5) as u8) + protected_signature_header_bytes.len() as u8;
+    let tmp: u8 = ((2 << 5) as u8) + protected_signature_header_bytes.len() as u8;
     bytes_to_verify.push(tmp);
     bytes_to_verify.append(&mut protected_signature_header_bytes.clone());
     bytes_to_verify.push(0x40);
     if payload.len() > 23 {
         // XXX: fix this.
-        return Err("Sorry, this is not implemented for payloads that are longer than 23.");
+        return Err(
+            "Sorry, this is not implemented for payloads that are longer than 23.",
+        );
     }
-    let tmp:u8 = ((2 << 5) as u8) + payload.len() as u8;
+    let tmp: u8 = ((2 << 5) as u8) + payload.len() as u8;
     bytes_to_verify.push(tmp);
     bytes_to_verify.extend_from_slice(payload);
     // Add CBOR array stuff.
