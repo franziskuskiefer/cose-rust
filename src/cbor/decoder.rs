@@ -12,13 +12,10 @@ impl DecoderCursor {
     /// Convert num bytes to a u64
     fn read_int_from_bytes(&mut self, num: usize) -> Result<u64, CborError> {
         let mut x: Vec<u8> = vec![0; num];
-        let bytes_read = match self.cursor.read(&mut x) {
+        match self.cursor.read_exact(&mut x) {
             Err(_) => return Err(CborError::TruncatedInput),
-            Ok(bytes_read) => bytes_read,
+            Ok(()) => {}
         };
-        if bytes_read != num {
-            return Err(CborError::TruncatedInput);
-        }
         let mut result: u64 = 0;
         for i in (0..num).rev() {
             result += (x[num - 1 - i] as u64) << (i * 8);
@@ -28,21 +25,14 @@ impl DecoderCursor {
 
     /// Read an integer and return it as u64.
     fn read_int(&mut self) -> Result<u64, CborError> {
-        let pos = self.cursor.position() as usize;
-        let first_value = self.cursor.get_ref()[pos] & 0x1F;
+        let first_value = self.peek_byte()? & 0x1F;
         match self.cursor.seek(SeekFrom::Current(1)) {
             Err(_) => return Err(CborError::LibraryError),
             Ok(_) => {}
         };
         let val: u64 = match first_value {
             0...23 => first_value as u64,
-            24 => {
-                // Manually advance cursor.
-                let pos = self.cursor.position() as usize;
-                let tmp = self.cursor.get_ref()[pos] as u64;
-                self.cursor.seek(SeekFrom::Current(1)).unwrap();
-                tmp
-            }
+            24 => self.read_int_from_bytes(1)?,
             25 => self.read_int_from_bytes(2)?,
             26 => self.read_int_from_bytes(4)?,
             27 => self.read_int_from_bytes(8)?,
@@ -82,13 +72,10 @@ impl DecoderCursor {
         }
         let length = length as usize;
         let mut byte_string: Vec<u8> = vec![0; length];
-        let bytes_read = match self.cursor.read(&mut byte_string) {
+        match self.cursor.read_exact(&mut byte_string) {
             Err(_) => return Err(CborError::TruncatedInput),
-            Ok(bytes_read) => bytes_read,
+            Ok(()) => {}
         };
-        if bytes_read != length {
-            return Err(CborError::TruncatedInput);
-        }
         Ok(CborType::Bytes(byte_string))
     }
 
@@ -109,10 +96,23 @@ impl DecoderCursor {
         Ok(CborType::Map(map))
     }
 
+    /// Peeks at the next byte in the cursor, but does not change the position.
+    fn peek_byte(&mut self) -> Result<u8, CborError> {
+        let mut x: Vec<u8> = vec![0; 1];
+        match self.cursor.read_exact(&mut x) {
+            Err(_) => return Err(CborError::TruncatedInput),
+            Ok(()) => {}
+        };
+        match self.cursor.seek(SeekFrom::Current(-1)) {
+            Err(_) => return Err(CborError::LibraryError),
+            Ok(_) => {}
+        };
+        Ok(x[0])
+    }
+
     /// Decodes the next CBOR item.
     pub fn decode_item(&mut self) -> Result<CborType, CborError> {
-        let pos = self.cursor.position() as usize;
-        let major_type = self.cursor.get_ref()[pos] >> 5;
+        let major_type = self.peek_byte()? >> 5;
         let result = match major_type {
             0 => {
                 let value = self.read_int()?;

@@ -17,6 +17,7 @@ pub enum CborType {
 }
 
 #[derive(Debug)]
+#[derive(PartialEq)]
 pub enum CborError {
     DuplicateMapKey,
     InputTooLarge,

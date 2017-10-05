@@ -8,7 +8,9 @@ use std::collections::BTreeMap;
 // First test all the basic types
 #[cfg(test)]
 fn test_decoder(bytes: Vec<u8>, expected: CborType) {
-    assert_eq!(decode(bytes).unwrap(), expected);
+    let result = decode(bytes);
+    assert!(result.is_ok());
+    assert_eq!(result.unwrap(), expected);
 }
 
 #[cfg(test)]
@@ -308,4 +310,28 @@ fn test_maps() {
     //                           0x42, 0x61, 0x63, 0x61, 0x43, 0x61, 0x64, 0x61,
     //                           0x44, 0x61, 0x65, 0x61, 0x45];
     // test_decoder(bytes, "{a: A, b: B, c: C, d: D, e: E}");
+}
+
+#[test]
+fn test_map_duplicate_keys() {
+    let bytes: Vec<u8> = vec![0xa4, 0x01, 0x02, 0x02, 0x03, 0x01, 0x03, 0x04, 0x04];
+    let result = decode(bytes);
+    assert!(result.is_err());
+    assert_eq!(result.unwrap_err(), CborError::DuplicateMapKey);
+}
+
+#[test]
+fn test_unsupported_major_type() {
+    let bytes: Vec<u8> = vec![0xe0];
+    let result = decode(bytes);
+    assert!(result.is_err());
+    assert_eq!(result.unwrap_err(), CborError::MalformedInput);
+}
+
+#[test]
+fn test_tag_with_no_value() {
+    let bytes: Vec<u8> = vec![0xc0];
+    let result = decode(bytes);
+    assert!(result.is_err());
+    assert_eq!(result.unwrap_err(), CborError::TruncatedInput);
 }
