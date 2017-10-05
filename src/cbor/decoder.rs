@@ -25,13 +25,9 @@ impl DecoderCursor {
 
     /// Read an integer and return it as u64.
     fn read_int(&mut self) -> Result<u64, CborError> {
-        let first_value = self.peek_byte()? & 0x1F;
-        match self.cursor.seek(SeekFrom::Current(1)) {
-            Err(_) => return Err(CborError::LibraryError),
-            Ok(_) => {}
-        };
-        let val: u64 = match first_value {
-            0...23 => first_value as u64,
+        let first_value = self.read_int_from_bytes(1)? & 0x1F;
+        let val = match first_value {
+            0...23 => first_value,
             24 => self.read_int_from_bytes(1)?,
             25 => self.read_int_from_bytes(2)?,
             26 => self.read_int_from_bytes(4)?,
