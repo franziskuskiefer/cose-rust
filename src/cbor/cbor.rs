@@ -18,10 +18,12 @@ pub enum CborType {
 
 #[derive(Debug)]
 pub enum CborError {
-    CborParsingFailed,
-    CborEncodingFailed,
-    InvalidCborObject,
-    InvalidMapKey,
+    DuplicateMapKey,
+    InputTooLarge,
+    InputValueOutOfRange,
+    LibraryError,
+    MalformedInput,
+    TruncatedInput,
 }
 
 impl Ord for CborType {
