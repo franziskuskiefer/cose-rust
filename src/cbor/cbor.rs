@@ -37,22 +37,20 @@ macro_rules! unpack {
 }
 
 impl Ord for CborType {
+    /// Sorting for maps: RFC 7049 Section 3.9
+    ///
+    /// The keys in every map must be sorted lowest value to highest.
+    ///  *  If two keys have different lengths, the shorter one sorts
+    ///     earlier;
+    ///
+    ///  *  If two keys have the same length, the one with the lower value
+    ///     in (byte-wise) lexical order sorts earlier.
     fn cmp(&self, other: &Self) -> Ordering {
-        match (self, other) {
-            (&CborType::Integer(x), &CborType::Integer(y)) => {
-                x.cmp(&y)
-            }
-            (&CborType::SignedInteger(x), &CborType::SignedInteger(y)) => {
-                x.cmp(&y)
-            }
-            (&CborType::Integer(_), &CborType::SignedInteger(_)) => {
-                return Ordering::Greater;
-            }
-            (&CborType::SignedInteger(_), &CborType::Integer(_)) => {
-                return Ordering::Less;
-            }
-            // TODO: implement to support something else than integer keys in maps.
-            _ => return Ordering::Equal,
+        let self_bytes = self.serialize();
+        let other_bytes = other.serialize();
+        if self_bytes.len() == other_bytes.len() {
+            return self_bytes.cmp(&other_bytes);
         }
+        self_bytes.len().cmp(&other_bytes.len())
     }
 }

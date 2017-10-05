@@ -119,15 +119,28 @@ fn test_map() {
     negative_map.insert(CborType::SignedInteger(-1), CborType::Integer(20));
     negative_map.insert(CborType::SignedInteger(-5), CborType::Integer(15));
     negative_map.insert(CborType::SignedInteger(-6), CborType::Integer(10));
-    assert_eq!(vec![0xa4, 0x25, 0x0a, 0x24, 0x0f, 0x23, 0x0a, 0x20, 0x14],
+    assert_eq!(vec![0xa4, 0x20, 0x14, 0x23, 0x0a, 0x24, 0x0f, 0x25, 0x0a],
                CborType::Map(negative_map).serialize());
 
     let mut mixed_map: BTreeMap<CborType, CborType> = BTreeMap::new();
     mixed_map.insert(CborType::Integer(0), CborType::Integer(10));
     mixed_map.insert(CborType::SignedInteger(-10), CborType::Integer(20));
     mixed_map.insert(CborType::Integer(15), CborType::Integer(15));
-    assert_eq!(vec![0xa3, 0x29, 0x14, 0x00, 0x0a, 0x0f, 0x0f],
+    assert_eq!(vec![0xa3, 0x00, 0x0a, 0x0f, 0x0f, 0x29, 0x14],
                CborType::Map(mixed_map).serialize());
+
+    let mut very_mixed_map: BTreeMap<CborType, CborType> = BTreeMap::new();
+    very_mixed_map.insert(CborType::Integer(0), CborType::Integer(10));
+    very_mixed_map.insert(CborType::SignedInteger(-10000), CborType::String("low".to_string()));
+    very_mixed_map.insert(CborType::SignedInteger(-10), CborType::Integer(20));
+    very_mixed_map.insert(CborType::Integer(10001), CborType::String("high".to_string()));
+    very_mixed_map.insert(CborType::Integer(10000), CborType::String("high".to_string()));
+    very_mixed_map.insert(CborType::Integer(15), CborType::Integer(15));
+    let expected = vec![
+      0xa6, 0x00, 0x0a, 0x0f, 0x0f, 0x29, 0x14, 0x19, 0x27, 0x10, 0x64, 0x68,
+      0x69, 0x67, 0x68, 0x19, 0x27, 0x11, 0x64, 0x68, 0x69, 0x67, 0x68, 0x39,
+      0x27, 0x0F, 0x63, 0x6C, 0x6F, 0x77];
+    assert_eq!(expected, CborType::Map(very_mixed_map).serialize());
 }
 
 #[test]

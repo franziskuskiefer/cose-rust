@@ -1,5 +1,5 @@
 use std::collections::BTreeMap;
-use cbor::cbor::{CborType, CborError};
+use cbor::cbor::CborType;
 
 /// Given a vector of bytes to append to, a tag to use, and an unsigned value to encode, uses the
 /// CBOR unsigned integer encoding to represent the given value.
@@ -45,83 +45,65 @@ fn common_encode_unsigned(output: &mut Vec<u8>, tag: u8, value: u64) {
 /// has the value 24. If two bytes are necessary, the value is 25. If four bytes are necessary, the
 /// value is 26. If 8 bytes are necessary, the value is 27. The following bytes are the value of the
 /// unsigned number in as many bytes were indicated in network byte order (big endian).
-fn encode_unsigned(output: &mut Vec<u8>, unsigned: u64) -> Result<(), CborError> {
+fn encode_unsigned(output: &mut Vec<u8>, unsigned: u64) {
     common_encode_unsigned(output, 0, unsigned);
-    return Ok(());
 }
 
 /// The major type is 1. The encoding is the same as for positive (i.e. unsigned) integers, except
 /// the value encoded is -1 minus the value of the negative number.
-fn encode_negative(output: &mut Vec<u8>, negative: i64) -> Result<(), CborError> {
+fn encode_negative(output: &mut Vec<u8>, negative: i64) {
     assert!(negative < 0);
     let value_to_encode: u64 = (-1 - negative) as u64;
     common_encode_unsigned(output, 1, value_to_encode);
-    return Ok(());
 }
 
 /// The major type is 2. The length of the data is encoded as with positive integers, followed by
 /// the actual data.
-fn encode_bytes(output: &mut Vec<u8>, bstr: &[u8]) -> Result<(), CborError> {
+fn encode_bytes(output: &mut Vec<u8>, bstr: &[u8]) {
     common_encode_unsigned(output, 2, bstr.len() as u64);
     output.extend_from_slice(bstr);
-    return Ok(());
 }
 
 /// The major type is 3. The length is as with bstr. The UTF-8-encoded bytes of the string follow.
-fn encode_string(output: &mut Vec<u8>, tstr: &String) -> Result<(), CborError> {
+fn encode_string(output: &mut Vec<u8>, tstr: &String) {
     let utf8_bytes = tstr.as_bytes();
     common_encode_unsigned(output, 3, utf8_bytes.len() as u64);
     output.extend_from_slice(&utf8_bytes);
-    return Ok(());
 }
 
 /// The major type is 4. The number of items is encoded as with positive integers. Then follows the
 /// encodings of the items themselves.
-fn encode_array(output: &mut Vec<u8>, array: &[CborType]) -> Result<(), CborError> {
+fn encode_array(output: &mut Vec<u8>, array: &[CborType]) {
     common_encode_unsigned(output, 4, array.len() as u64);
     for element in array {
         output.append(&mut element.serialize());
     }
-    return Ok(());
 }
 
 /// The major type is 5. The number of pairs is encoded as with positive integers. Then follows the
 /// encodings of each key, value pair. In Canonical CBOR, the keys must be sorted lowest value to
 /// highest.
-fn encode_map(output: &mut Vec<u8>, map: &BTreeMap<CborType, CborType>) -> Result<(), CborError> {
+fn encode_map(output: &mut Vec<u8>, map: &BTreeMap<CborType, CborType>) {
     common_encode_unsigned(output, 5, map.len() as u64);
     for (key, value) in map {
-        match key {
-            // This implementation only supports integers and signed integers as
-            // keys in a map. If anything else is, empty the output and return.
-            &CborType::SignedInteger(_) => (),
-            &CborType::Integer(_) => (),
-            _ => {
-                output.clear();
-                return Err(CborError::InvalidMapKey);
-            },
-        }
         let key_encoded = key.serialize();
         for byte in key_encoded {
             output.push(byte);
         }
         output.append(&mut value.serialize());
     }
-    return Ok(());
 }
 
-#[allow(unused_variables)]
-fn encode_tag(output: &mut Vec<u8>, tag: &u64, val: &Box<CborType>) -> Result<(), CborError> {
+fn encode_tag(output: &mut Vec<u8>, tag: &u64, val: &Box<CborType>) {
     common_encode_unsigned(output, 6, *tag);
     output.append(&mut val.serialize());
-    return Ok(());
 }
 
 impl CborType {
     /// Serialize a Cbor object.
     pub fn serialize(&self) -> Vec<u8> {
         let mut bytes: Vec<u8> = Vec::new();
-        let rv = match self {
+        match self {
             &CborType::Integer(ref unsigned) => encode_unsigned(&mut bytes, *unsigned),
             &CborType::SignedInteger(ref negative) => encode_negative(&mut bytes, *negative),
             &CborType::Bytes(ref bstr) => encode_bytes(&mut bytes, &bstr),
@@ -130,9 +112,6 @@ impl CborType {
             &CborType::Map(ref map) => encode_map(&mut bytes, &map),
             &CborType::Tag(ref t, ref val) => encode_tag(&mut bytes, t, val),
         };
-        match rv {
-            Err(_) => Vec::new(),
-            Ok(_) => bytes,
-        }
+        bytes
     }
 }
