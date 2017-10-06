@@ -17,23 +17,14 @@ pub enum CborType {
 }
 
 #[derive(Debug)]
+#[derive(PartialEq)]
 pub enum CborError {
-    CborParsingFailed,
-    CborEncodingFailed,
-    InvalidCborObject,
-    InvalidMapKey,
-}
-
-macro_rules! unpack {
-   ($to:tt, $var:ident) => (
-        match $var {
-            &CborType::$to(ref cbor_object) => {
-                cbor_object
-            }
-            // XXX: This needs handling!
-            _ => return Err("Error unpacking a CborType."),
-        };
-    )
+    DuplicateMapKey,
+    InputTooLarge,
+    InputValueOutOfRange,
+    LibraryError,
+    MalformedInput,
+    TruncatedInput,
 }
 
 impl Ord for CborType {
