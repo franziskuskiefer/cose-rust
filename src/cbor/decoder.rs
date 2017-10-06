@@ -110,8 +110,12 @@ impl DecoderCursor {
             2 => return Ok(self.read_byte_string().unwrap()),
             4 => return Ok(self.read_array().unwrap()),
             5 => return Ok(self.read_map().unwrap()),
-            6 => return Ok(CborType::Tag(self.read_int().unwrap(),
-                                         Box::new(self.decode_item().unwrap()))),
+            6 => {
+                return Ok(CborType::Tag(
+                    self.read_int().unwrap(),
+                    Box::new(self.decode_item().unwrap()),
+                ))
+            }
             _ => return Err("Malformed first byte"),
         }
     }
@@ -119,9 +123,7 @@ impl DecoderCursor {
 
 /// Read the CBOR structure in bytes and return it as a CBOR object.
 pub fn decode(bytes: Vec<u8>) -> Result<CborType, &'static str> {
-    let mut decoder_cursor = DecoderCursor {
-        cursor: Cursor::new(bytes),
-    };
+    let mut decoder_cursor = DecoderCursor { cursor: Cursor::new(bytes) };
     decoder_cursor.decode_item()
     // TODO: check cursor at end?
 }
