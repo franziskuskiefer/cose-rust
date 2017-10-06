@@ -93,6 +93,14 @@ impl DecoderCursor {
         Ok(CborType::Map(map))
     }
 
+    fn read_null(&mut self) -> Result<CborType, CborError> {
+        let value = self.read_int_from_bytes(1)? & 0x1F;
+        if value != 22 {
+            return Err(CborError::UnsupportedType);
+        }
+        Ok(CborType::Null)
+    }
+
     /// Peeks at the next byte in the cursor, but does not change the position.
     fn peek_byte(&mut self) -> Result<u8, CborError> {
         let x = self.read_bytes(1)?;
@@ -120,7 +128,8 @@ impl DecoderCursor {
                 let item = self.decode_item()?;
                 CborType::Tag(tag, Box::new(item))
             }
-            _ => return Err(CborError::MalformedInput),
+            7 => self.read_null()?,
+            _ => unreachable!(),
         };
         Ok(result)
     }

@@ -14,6 +14,7 @@ pub enum CborType {
     String(String),
     Array(Vec<CborType>),
     Map(BTreeMap<CborType, CborType>),
+    Null,
 }
 
 #[derive(Debug)]
@@ -25,6 +26,7 @@ pub enum CborError {
     LibraryError,
     MalformedInput,
     TruncatedInput,
+    UnsupportedType,
 }
 
 impl Ord for CborType {
