@@ -14,7 +14,7 @@ impl DecoderCursor {
         let mut buf: Vec<u8> = vec![0; len];
         match self.cursor.read_exact(&mut buf) {
             Err(_) => return Err(CborError::TruncatedInput),
-            Ok(()) => {}
+            Ok(()) => {},
         }
         Ok(buf)
     }
