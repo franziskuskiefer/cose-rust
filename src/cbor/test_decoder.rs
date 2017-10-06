@@ -8,7 +8,16 @@ use std::collections::BTreeMap;
 // First test all the basic types
 #[cfg(test)]
 fn test_decoder(bytes: Vec<u8>, expected: CborType) {
-    assert_eq!(decode(bytes).unwrap(), expected);
+    let result = decode(bytes);
+    assert!(result.is_ok());
+    assert_eq!(result.unwrap(), expected);
+}
+
+#[cfg(test)]
+fn test_decoder_error(bytes: Vec<u8>, expected_error: CborError) {
+    let result = decode(bytes);
+    assert!(result.is_err());
+    assert_eq!(result.unwrap_err(), expected_error);
 }
 
 #[cfg(test)]
@@ -308,4 +317,52 @@ fn test_maps() {
     //                           0x42, 0x61, 0x63, 0x61, 0x43, 0x61, 0x64, 0x61,
     //                           0x44, 0x61, 0x65, 0x61, 0x45];
     // test_decoder(bytes, "{a: A, b: B, c: C, d: D, e: E}");
+}
+
+#[test]
+fn test_map_duplicate_keys() {
+    let bytes: Vec<u8> = vec![0xa4, 0x01, 0x02, 0x02, 0x03, 0x01, 0x03, 0x04, 0x04];
+    test_decoder_error(bytes, CborError::DuplicateMapKey);
+}
+
+#[test]
+fn test_unsupported_major_type() {
+    let bytes: Vec<u8> = vec![0xe0];
+    test_decoder_error(bytes, CborError::MalformedInput);
+}
+
+#[test]
+fn test_tag_with_no_value() {
+    let bytes: Vec<u8> = vec![0xc0];
+    test_decoder_error(bytes, CborError::TruncatedInput);
+}
+
+#[test]
+fn test_truncated_int() {
+    let bytes: Vec<u8> = vec![0x19, 0x03];
+    test_decoder_error(bytes, CborError::TruncatedInput);
+}
+
+#[test]
+fn test_truncated_array() {
+    let bytes: Vec<u8> = vec![0x83, 0x01, 0x02];
+    test_decoder_error(bytes, CborError::TruncatedInput);
+}
+
+#[test]
+fn test_truncated_map() {
+    let bytes: Vec<u8> = vec![0xa2, 0x01, 0x02, 0x00];
+    test_decoder_error(bytes, CborError::TruncatedInput);
+}
+
+#[test]
+fn test_malformed_integer() {
+    let bytes: Vec<u8> = vec![0x1c];
+    test_decoder_error(bytes, CborError::MalformedInput);
+}
+
+#[test]
+fn test_signed_integer_too_large() {
+    let bytes = vec![0x3b, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff];
+    test_decoder_error(bytes, CborError::InputValueOutOfRange);
 }
