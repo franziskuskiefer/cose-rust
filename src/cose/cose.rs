@@ -13,7 +13,11 @@ pub enum CoseError {
 /// Verify a COSE signature.
 pub fn verify_signature(payload: &[u8], cose_signature: Vec<u8>) -> Result<(), CoseError> {
     // Parse COSE signature.
-    let cose_signatures = decode_signature(cose_signature, payload).unwrap();
+    let cose_signatures = decode_signature(cose_signature, payload);
+    if !cose_signatures.is_ok() {
+        return Err(CoseError::CoseParsingFailed);
+    }
+    let cose_signatures = cose_signatures.unwrap();
     if cose_signatures.len() != 1 {
         return Err(CoseError::CoseParsingFailed);
     }

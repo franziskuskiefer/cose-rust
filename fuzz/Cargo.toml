@@ -1,0 +1,26 @@
+
+[package]
+name = "cose-fuzz"
+version = "0.0.1"
+authors = ["Franziskus Kiefer <franziskuskiefer@gmail.com>", "David Keeler <dkeeler@mozilla.com>"]
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies.cose]
+path = ".."
+[dependencies.libfuzzer-sys]
+git = "https://github.com/rust-fuzz/libfuzzer-sys.git"
+
+# Prevent this from interfering with workspaces
+[workspace]
+members = ["."]
+
+[[bin]]
+name = "fuzz_cose_decoder"
+path = "fuzz_targets/fuzz_cose_decoder.rs"
+
+[[bin]]
+name = "fuzz_cbor_decoder"
+path = "fuzz_targets/fuzz_cbor_decoder.rs"

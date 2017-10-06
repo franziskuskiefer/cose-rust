@@ -11,7 +11,7 @@ pub struct DecoderCursor {
 impl DecoderCursor {
     /// Convert num bytes to a u64
     fn read_int_from_bytes(&mut self, num: usize) -> Result<u64, &'static str> {
-        let mut bytes = &mut self.cursor;
+        let bytes = &mut self.cursor;
         let mut x: Vec<u8> = vec![0; num];
         if bytes.read(&mut x).unwrap() != num {
             return Err("Couldn't read all bytes");
@@ -103,6 +103,9 @@ impl DecoderCursor {
     /// Decodes the next item in DecoderCursor.
     pub fn decode_item(&mut self) -> Result<CborType, &'static str> {
         let pos = self.cursor.position() as usize;
+        if self.cursor.get_ref().len() == 0 {
+            return Err("This item is empty.");
+        }
         let major_type = self.cursor.get_ref()[pos] >> 5;
         match major_type {
             0 => return Ok(CborType::Integer(self.read_int().unwrap())),
