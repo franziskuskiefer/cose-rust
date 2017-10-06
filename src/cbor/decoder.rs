@@ -126,7 +126,7 @@ impl DecoderCursor {
     }
 }
 
-/// Read the CBOR structure in bytes and return it as a CBOR object.
+/// Read the CBOR structure in bytes and return it as a CborType.
 pub fn decode(bytes: Vec<u8>) -> Result<CborType, CborError> {
     let mut decoder_cursor = DecoderCursor { cursor: Cursor::new(bytes) };
     decoder_cursor.decode_item()

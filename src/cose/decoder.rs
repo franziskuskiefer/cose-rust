@@ -27,7 +27,6 @@ macro_rules! unpack {
             &CborType::$to(ref cbor_object) => {
                 cbor_object
             }
-            // XXX: This needs handling!
             _ => return Err(CoseError::UnexpectedType),
         };
     )
