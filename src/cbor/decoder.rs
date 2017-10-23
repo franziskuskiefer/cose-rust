@@ -11,6 +11,10 @@ struct DecoderCursor {
 impl DecoderCursor {
     /// Read and return the given number of bytes from the cursor. Advances the cursor.
     fn read_bytes(&mut self, len: usize) -> Result<Vec<u8>, CborError> {
+        // We can not allocate more than 2GB.
+        if len > 2147483648 {
+            return Err(CborError::InputTooLarge);
+        }
         let mut buf: Vec<u8> = vec![0; len];
         match self.cursor.read_exact(&mut buf) {
             Err(_) => return Err(CborError::TruncatedInput),
