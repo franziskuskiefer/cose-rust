@@ -5,37 +5,31 @@ use cose::decoder::*;
 
 #[derive(Debug)]
 pub enum CoseError {
-    CoseParsingFailed,
+    DecodingFailure,
+    LibraryFailure,
+    MalformedInput,
+    MissingHeader,
+    UnexpectedHeaderValue,
+    UnexpectedTag,
+    UnexpectedType,
+    Unimplemented,
     VerificationFailed,
-    SigningFailed,
 }
 
 /// Verify a COSE signature.
 pub fn verify_signature(payload: &[u8], cose_signature: Vec<u8>) -> Result<(), CoseError> {
     // Parse COSE signature.
-    let cose_signatures = decode_signature(cose_signature, payload);
-    if !cose_signatures.is_ok() {
-        return Err(CoseError::CoseParsingFailed);
-    }
-    let cose_signatures = cose_signatures.unwrap();
+    let cose_signatures = decode_signature(cose_signature, payload)?;
     if cose_signatures.len() != 1 {
-        return Err(CoseError::CoseParsingFailed);
+        return Err(CoseError::LibraryFailure);
     }
     let signature_type = &cose_signatures[0].signature_type;
     let signature_algorithm = match signature_type {
         &CoseSignatureType::ES256 => nss::SignatureAlgorithm::ES256,
-        _ => return Err(CoseError::CoseParsingFailed),
+        _ => return Err(CoseError::LibraryFailure),
     };
     let signature_bytes = &cose_signatures[0].signature;
-    if signature_bytes.len() != 64 {
-        // XXX: We expect an ES256 signature
-        return Err(CoseError::CoseParsingFailed);
-    }
     let real_payload = &cose_signatures[0].to_verify;
-    if real_payload.len() < payload.len() {
-        // XXX: We can probably make a better check here.
-        return Err(CoseError::CoseParsingFailed);
-    }
 
     // Verify the parsed signature.
     let verify_result = nss::verify_signature(

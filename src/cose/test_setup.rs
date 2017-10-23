@@ -1,13 +1,13 @@
 use std::os::raw;
 use std::ptr;
-use std::sync::{Once, ONCE_INIT};
+use std::sync::{ONCE_INIT, Once};
 static START: Once = ONCE_INIT;
 
 type SECStatus = raw::c_int;
 const SEC_SUCCESS: SECStatus = 0;
 // TODO: ugh this will probably have a platform-specific name...
-#[link(name="nss3")]
-extern {
+#[link(name = "nss3")]
+extern "C" {
     fn NSS_NoDB_Init(configdir: *const u8) -> SECStatus;
 }
 
