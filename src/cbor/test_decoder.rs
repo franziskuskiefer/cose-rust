@@ -366,3 +366,20 @@ fn test_signed_integer_too_large() {
     let bytes = vec![0x3b, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff];
     test_decoder_error(bytes, CborError::InputValueOutOfRange);
 }
+
+#[test]
+fn test_large_input() {
+    let array = vec![0xFF; MAX_ARRAY_SIZE];
+    let expected = CborType::Bytes(array.clone());
+    let mut bytes = vec![0x5A, 0x80, 0x00, 0x00, 0x00];
+    bytes.extend_from_slice(&array);
+    test_decoder(bytes, expected);
+}
+
+#[test]
+fn test_too_large_input() {
+    let array = vec![0xFF; MAX_ARRAY_SIZE+1];
+    let mut bytes = vec![0x5A, 0x80, 0x00, 0x00, 0x01];
+    bytes.extend_from_slice(&array);
+    test_decoder_error(bytes, CborError::InputTooLarge);
+}

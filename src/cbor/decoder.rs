@@ -2,6 +2,8 @@ use std::collections::BTreeMap;
 use std::io::{Cursor, Read, Seek, SeekFrom};
 use cbor::cbor::{CborError, CborType};
 
+pub const MAX_ARRAY_SIZE: usize = 2147483648;
+
 /// Struct holding a cursor and additional information for decoding.
 #[derive(Debug)]
 struct DecoderCursor {
@@ -12,7 +14,7 @@ impl DecoderCursor {
     /// Read and return the given number of bytes from the cursor. Advances the cursor.
     fn read_bytes(&mut self, len: usize) -> Result<Vec<u8>, CborError> {
         // We can not allocate more than 2GB.
-        if len > 2147483648 {
+        if len > MAX_ARRAY_SIZE {
             return Err(CborError::InputTooLarge);
         }
         let mut buf: Vec<u8> = vec![0; len];
