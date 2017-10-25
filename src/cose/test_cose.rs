@@ -1,11 +1,12 @@
 #[cfg(test)]
 use cose::test_setup as test;
 #[cfg(test)]
-use cose::cose as cose;
+use cose::cose;
 #[cfg(test)]
 use cose::decoder::CoseSignatureType;
 
 #[test]
+#[cfg_attr(rustfmt, rustfmt_skip)]
 fn test_rfc6979_test_vector_cose_1() {
     test::setup();
     let payload = b"This is the content.";

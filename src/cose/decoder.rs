@@ -1,5 +1,6 @@
 use cbor::decoder::*;
 use cbor::cbor::CborType;
+use cose::cose::CoseError;
 
 const COSE_SIGN_TAG: u64 = 98;
 
@@ -20,20 +21,27 @@ pub struct CoseSignature {
     pub to_verify: Vec<u8>,
 }
 
-fn get_map_value(map: &CborType, key: &CborType) -> Result<CborType, &'static str> {
+macro_rules! unpack {
+   ($to:tt, $var:ident) => (
+        match $var {
+            &CborType::$to(ref cbor_object) => {
+                cbor_object
+            }
+            _ => return Err(CoseError::UnexpectedType),
+        };
+    )
+}
+
+fn get_map_value(map: &CborType, key: &CborType) -> Result<CborType, CoseError> {
     match map {
         &CborType::Map(ref values) => {
-            if values.is_empty() {
-                return Err("This map is empty.");
-            }
-            let val = values.get(key);
-            match val {
-                Some(x) => return Ok(x.clone()),
-                _ => return Err("Couldn't retrieve value for the provided key."),
+            match values.get(key) {
+                Some(x) => Ok(x.clone()),
+                _ => Err(CoseError::MissingHeader),
             }
         }
-        _ => return Err("This is not a CborType::Map."),
-    };
+        _ => Err(CoseError::UnexpectedType),
+    }
 }
 
 /// COSE_Sign = [
@@ -75,55 +83,55 @@ fn get_map_value(map: &CborType, key: &CborType) -> Result<CborType, &'static st
 ///     signature : bstr
 /// ]
 
-pub fn decode_signature(
-    bytes: Vec<u8>,
-    payload: &[u8],
-) -> Result<Vec<CoseSignature>, &'static str> {
+pub fn decode_signature(bytes: Vec<u8>, payload: &[u8]) -> Result<Vec<CoseSignature>, CoseError> {
     // This has to be a COSE_Sign object, which is a tagged array.
-    let tagged_cose_sign = decode(bytes)?;
+    let tagged_cose_sign = match decode(bytes) {
+        Err(_) => return Err(CoseError::DecodingFailure),
+        Ok(value) => value,
+    };
     let cose_sign_array = match tagged_cose_sign {
         CborType::Tag(tag, cose_sign) => {
             if tag != COSE_SIGN_TAG {
-                return Err("This is not a COSE_Sign object 0");
+                return Err(CoseError::UnexpectedTag);
             }
             match *cose_sign {
                 CborType::Array(values) => values,
-                _ => return Err("This is not a COSE_Sign object 1"),
+                _ => return Err(CoseError::UnexpectedType),
             }
         }
-        _ => return Err("This is not a COSE_Sign object 2"),
+        _ => return Err(CoseError::UnexpectedType),
     };
     if cose_sign_array.len() != 4 {
-        return Err("This is not a valid COSE signature object 3.");
+        return Err(CoseError::MalformedInput);
     }
     let signatures = &cose_sign_array[3];
     let signatures = unpack!(Array, signatures);
 
     // Take the first signature.
     if signatures.len() < 1 {
-        return Err(
-            "This is not a valid COSE Signature. Couldn't find a signature object.",
-        );
+        return Err(CoseError::MalformedInput);
     }
     let cose_signature = &signatures[0];
     let cose_signature = unpack!(Array, cose_signature);
     if cose_signature.len() != 3 {
-        return Err("This is not a valid COSE Signature. Too short.");
+        return Err(CoseError::MalformedInput);
     }
     let protected_signature_header_bytes = &cose_signature[0];
     let protected_signature_header_bytes = unpack!(Bytes, protected_signature_header_bytes).clone();
 
     // Parse the protected signature header.
-    let protected_signature_header = decode(protected_signature_header_bytes.clone())?;
-    // TODO: This isn't quite right due to order... (it's a map)
+    let protected_signature_header = match decode(protected_signature_header_bytes.clone()) {
+        Err(_) => return Err(CoseError::DecodingFailure),
+        Ok(value) => value,
+    };
     let signature_algorithm = get_map_value(&protected_signature_header, &CborType::Integer(1))?;
     match signature_algorithm {
         CborType::SignedInteger(val) => {
             if val != -7 {
-                return Err("Invalid COSE signature: expected ES256 (-7).");
+                return Err(CoseError::UnexpectedHeaderValue);
             }
         }
-        _ => return Err("Invalid COSE signature: alg value is not a signed integer."),
+        _ => return Err(CoseError::UnexpectedType),
     };
     let signature_algorithm = CoseSignatureType::ES256;
 
@@ -143,9 +151,7 @@ pub fn decode_signature(
     bytes_to_verify.push(0x40);
     if protected_signature_header_bytes.len() > 23 {
         // XXX: fix this.
-        return Err(
-            "Sorry, this is not implemented for protected headers that are longer than 23.",
-        );
+        return Err(CoseError::Unimplemented);
     }
     let tmp: u8 = ((2 << 5) as u8) + protected_signature_header_bytes.len() as u8;
     bytes_to_verify.push(tmp);
@@ -153,9 +159,7 @@ pub fn decode_signature(
     bytes_to_verify.push(0x40);
     if payload.len() > 23 {
         // XXX: fix this.
-        return Err(
-            "Sorry, this is not implemented for payloads that are longer than 23.",
-        );
+        return Err(CoseError::Unimplemented);
     }
     let tmp: u8 = ((2 << 5) as u8) + payload.len() as u8;
     bytes_to_verify.push(tmp);

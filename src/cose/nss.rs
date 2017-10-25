@@ -222,7 +222,7 @@ pub fn sign(
     payload: &[u8],
 ) -> Result<Vec<u8>, NSSError> {
     match signature_algorithm {
-        SignatureAlgorithm::ES256 => {},
+        SignatureAlgorithm::ES256 => {}
         SignatureAlgorithm::PS256 => return Err(NSSError::Unimplemented),
     };
     let slot = unsafe { PK11_GetInternalSlot() };
@@ -259,8 +259,9 @@ pub fn sign(
         signature.set_len(signature_len);
     }
     let mut signature_item = SECItem::maybe_new(signature.as_slice())?;
-    let rv =
-        unsafe { PK11_SignWithMechanism(key, CKM_ECDSA, ptr::null(), &mut signature_item, &hash_item) };
+    let rv = unsafe {
+        PK11_SignWithMechanism(key, CKM_ECDSA, ptr::null(), &mut signature_item, &hash_item)
+    };
 
     if rv != SEC_SUCCESS || signature_item.len != signature_len as u32 {
         println!("Signing failed.");
