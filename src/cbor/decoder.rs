@@ -8,6 +8,9 @@ struct DecoderCursor {
     pub cursor: Cursor<Vec<u8>>,
 }
 
+/// Apply this mask (with &) to get the value part of the initial byte of a CBOR item.
+const INITIAL_VALUE_MASK: u64 = 0b0001_1111;
+
 impl DecoderCursor {
     /// Read and return the given number of bytes from the cursor. Advances the cursor.
     fn read_bytes(&mut self, len: usize) -> Result<Vec<u8>, CborError> {
@@ -31,7 +34,7 @@ impl DecoderCursor {
 
     /// Read an integer and return it as u64.
     fn read_int(&mut self) -> Result<u64, CborError> {
-        let first_value = self.read_int_from_bytes(1)? & 0x1F;
+        let first_value = self.read_int_from_bytes(1)? & INITIAL_VALUE_MASK;
         let val = match first_value {
             0...23 => first_value,
             24 => self.read_int_from_bytes(1)?,
@@ -94,7 +97,7 @@ impl DecoderCursor {
     }
 
     fn read_null(&mut self) -> Result<CborType, CborError> {
-        let value = self.read_int_from_bytes(1)? & 0x1F;
+        let value = self.read_int_from_bytes(1)? & INITIAL_VALUE_MASK;
         if value != 22 {
             return Err(CborError::UnsupportedType);
         }
