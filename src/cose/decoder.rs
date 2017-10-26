@@ -23,8 +23,8 @@ pub struct CoseSignature {
 
 macro_rules! unpack {
    ($to:tt, $var:ident) => (
-        match $var {
-            &CborType::$to(ref cbor_object) => {
+        match *$var {
+            CborType::$to(ref cbor_object) => {
                 cbor_object
             }
             _ => return Err(CoseError::UnexpectedType),
@@ -33,8 +33,8 @@ macro_rules! unpack {
 }
 
 fn get_map_value(map: &CborType, key: &CborType) -> Result<CborType, CoseError> {
-    match map {
-        &CborType::Map(ref values) => {
+    match *map {
+        CborType::Map(ref values) => {
             match values.get(key) {
                 Some(x) => Ok(x.clone()),
                 _ => Err(CoseError::MissingHeader),
@@ -44,42 +44,42 @@ fn get_map_value(map: &CborType, key: &CborType) -> Result<CborType, CoseError> 
     }
 }
 
-/// COSE_Sign = [
+/// `COSE_Sign` = [
 ///     Headers,
 ///     payload : bstr / nil,
-///     signatures : [+ COSE_Signature]
+///     signatures : [+ `COSE_Signature`]
 /// ]
 ///
 /// Headers = (
-///     protected : empty_or_serialized_map,
-///     unprotected : header_map
+///     protected : `empty_or_serialized_map`,
+///     unprotected : `header_map`
 /// )
 ///
 /// This syntax is a little unintuitive. Taken together, the two previous definitions essentially
 /// mean:
 ///
-/// COSE_Sign = [
-///     protected : empty_or_serialized_map,
-///     unprotected : header_map
+/// `COSE_Sign` = [
+///     protected : `empty_or_serialized_map`,
+///     unprotected : `header_map`
 ///     payload : bstr / nil,
-///     signatures : [+ COSE_Signature]
+///     signatures : [+ `COSE_Signature`]
 /// ]
 ///
-/// (COSE_Sign is an array. The first element is an empty or serialized map (in our case, it is
+/// (`COSE_Sign` is an array. The first element is an empty or serialized map (in our case, it is
 /// never expected to be empty). The second element is a map (it is expected to be empty. The third
 /// element is a bstr or nil (it is expected to be nil). The fourth element is an array of
-/// COSE_Signature.)
+/// `COSE_Signature`.)
 ///
-/// COSE_Signature =  [
+/// `COSE_Signature` =  [
 ///     Headers,
 ///     signature : bstr
 /// ]
 ///
 /// but again, unpacking this:
 ///
-/// COSE_Signature =  [
-///     protected : empty_or_serialized_map,
-///     unprotected : header_map
+/// `COSE_Signature` =  [
+///     protected : `empty_or_serialized_map`,
+///     unprotected : `header_map`
 ///     signature : bstr
 /// ]
 
