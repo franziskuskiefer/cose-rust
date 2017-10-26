@@ -4,6 +4,8 @@ use cose::test_setup as test;
 use cose::cose;
 #[cfg(test)]
 use cose::decoder::CoseSignatureType;
+#[cfg(test)]
+use cose::cose_sign;
 
 #[test]
 #[cfg_attr(rustfmt, rustfmt_skip)]
@@ -62,7 +64,7 @@ fn test_cose_sign() {
                           0x76, 0x0c, 0x95, 0x20, 0xd0, 0x54, 0xaa, 0x93, 0xc3,
                           0xaf, 0xb0, 0x4e, 0x30, 0x67, 0x05, 0xdb, 0x60, 0x90,
                           0x30, 0x85, 0x07, 0xb4, 0xd3];
-    let cose_signature = cose::sign(payload, CoseSignatureType::ES256, &public_key, &secret_key);
+    let cose_signature = cose_sign::sign(payload, CoseSignatureType::ES256, &public_key, &secret_key);
     assert!(cose_signature.is_ok());
     let cose_signature = cose_signature.unwrap();
 
