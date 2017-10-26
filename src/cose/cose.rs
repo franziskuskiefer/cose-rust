@@ -14,6 +14,8 @@ pub enum CoseError {
     UnexpectedType,
     Unimplemented,
     VerificationFailed,
+    SigningFailed,
+    UnkownSignatureScheme,
 }
 
 /// Verify a COSE signature.
@@ -42,10 +44,4 @@ pub fn verify_signature(payload: &[u8], cose_signature: Vec<u8>) -> Result<(), C
         return Err(CoseError::VerificationFailed);
     }
     Ok(())
-}
-
-/// Sign the payload and return a serialised COSE_Sign object.
-#[allow(unused_variables)]
-pub fn sign(payload: &[u8]) -> Result<Vec<u8>, CoseError> {
-    unimplemented!()
 }

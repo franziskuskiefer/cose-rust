@@ -6,6 +6,7 @@ use std::os::raw;
 /// An enum identifying supported signature algorithms. Currently only ECDSA with SHA256 (ES256) and
 /// RSASSA-PSS with SHA-256 (PS256) are supported. Note that with PS256, the salt length is defined
 /// to be 32 bytes.
+#[derive(Debug)]
 pub enum SignatureAlgorithm {
     ES256,
     PS256,
