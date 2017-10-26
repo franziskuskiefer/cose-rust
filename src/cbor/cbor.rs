@@ -45,3 +45,13 @@ impl Ord for CborType {
         self_bytes.len().cmp(&other_bytes.len())
     }
 }
+
+impl From<Vec<u8>> for CborType {
+    fn from(vec: Vec<u8>) -> Self {
+        let mut result: Vec<CborType> = Vec::new();
+        for x in vec {
+            result.push(CborType::Integer(x as u64));
+        }
+        CborType::Array(result)
+    }
+}
