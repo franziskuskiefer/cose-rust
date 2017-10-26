@@ -22,3 +22,8 @@ script:
 - |
   cargo build &&
   cargo test
+
+matrix:
+  include:
+    - rust: "nightly"
+      cargo build --features "clippy"
