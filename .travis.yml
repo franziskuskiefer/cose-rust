@@ -12,6 +12,11 @@ addons:
       - build-essential
       - libnss3-dev
 
+matrix:
+  include:
+    - rust: nightly
+      env: FEATURES=clippy
+
 script:
 # The NSS version in Ubuntu is too old. Get a newer one.
 - |
@@ -20,10 +25,5 @@ script:
   sudo dpkg -i libnspr4_4.16-1ubuntu1_amd64.deb
   sudo dpkg -i libnss3_3.32-1ubuntu3_amd64.deb
 - |
-  cargo build &&
+  cargo build --features "$FEATURES" &&
   cargo test
-
-matrix:
-  include:
-    - rust: "nightly"
-      cargo build --features "clippy"
