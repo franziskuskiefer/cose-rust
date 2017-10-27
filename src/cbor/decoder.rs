@@ -5,7 +5,7 @@ use cbor::cbor::{CborError, CborType};
 // We limit the length of any cbor byte array to 128MiB. This is a somewhat
 // arbitrary limit that should work on all platforms and is large enough for
 // any benign data.
-pub const MAX_ARRAY_SIZE: usize = 134217728;
+pub const MAX_ARRAY_SIZE: usize = 134_217_728;
 
 /// Struct holding a cursor and additional information for decoding.
 #[derive(Debug)]
@@ -80,8 +80,7 @@ impl DecoderCursor {
     /// Read a byte string and return it.
     fn read_byte_string(&mut self) -> Result<CborType, CborError> {
         let length = self.read_int()?;
-        let limit = usize::max_value() as u64;
-        if length > limit {
+        if length > MAX_ARRAY_SIZE as u64 {
             return Err(CborError::InputTooLarge);
         }
         let byte_string = self.read_bytes(length as usize)?;
