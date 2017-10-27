@@ -99,6 +99,12 @@ fn encode_tag(output: &mut Vec<u8>, tag: &u64, val: &CborType) {
     output.append(&mut val.serialize());
 }
 
+/// The major type is 7. The only supported value for this type is 22, which is Null.
+/// This makes the encoded value 246, or 0xf6.
+fn encode_null(output: &mut Vec<u8>) {
+    output.push(0xf6);
+}
+
 impl CborType {
     /// Serialize a Cbor object.
     pub fn serialize(&self) -> Vec<u8> {
@@ -111,6 +117,7 @@ impl CborType {
             CborType::Array(ref arr) => encode_array(&mut bytes, arr),
             CborType::Map(ref map) => encode_map(&mut bytes, map),
             CborType::Tag(ref t, ref val) => encode_tag(&mut bytes, t, val),
+            CborType::Null => encode_null(&mut bytes),
         };
         bytes
     }
