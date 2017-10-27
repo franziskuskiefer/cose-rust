@@ -1,6 +1,6 @@
 use cbor::decoder::*;
-use cbor::cbor::CborType;
-use cose::cose::CoseError;
+use cbor::CborType;
+use cose::CoseError;
 
 const COSE_SIGN_TAG: u64 = 98;
 

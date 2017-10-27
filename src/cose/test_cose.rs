@@ -1,7 +1,7 @@
 #[cfg(test)]
 use cose::test_setup as test;
 #[cfg(test)]
-use cose::cose;
+use cose;
 
 #[test]
 #[cfg_attr(rustfmt, rustfmt_skip)]
