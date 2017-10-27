@@ -2,6 +2,11 @@ use std::collections::BTreeMap;
 use std::io::{Cursor, Read, Seek, SeekFrom};
 use cbor::cbor::{CborError, CborType};
 
+// We limit the length of any cbor byte array to 128MiB. This is a somewhat
+// arbitrary limit that should work on all platforms and is large enough for
+// any benign data.
+pub const MAX_ARRAY_SIZE: usize = 134217728;
+
 /// Struct holding a cursor and additional information for decoding.
 #[derive(Debug)]
 struct DecoderCursor {
@@ -14,6 +19,9 @@ const INITIAL_VALUE_MASK: u64 = 0b0001_1111;
 impl DecoderCursor {
     /// Read and return the given number of bytes from the cursor. Advances the cursor.
     fn read_bytes(&mut self, len: usize) -> Result<Vec<u8>, CborError> {
+        if len > MAX_ARRAY_SIZE {
+            return Err(CborError::InputTooLarge);
+        }
         let mut buf: Vec<u8> = vec![0; len];
         match self.cursor.read_exact(&mut buf) {
             Err(_) => return Err(CborError::TruncatedInput),
