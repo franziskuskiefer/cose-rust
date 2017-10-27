@@ -14,12 +14,12 @@ fn common_encode_unsigned(output: &mut Vec<u8>, tag: u8, value: u64) {
             output.push(shifted_tag | 24);
             output.push(value as u8);
         }
-        256...65535 => {
+        256...65_535 => {
             output.push(shifted_tag | 25);
             output.push((value >> 8) as u8);
             output.push((value & 255) as u8);
         }
-        65536...4294967295 => {
+        65_536...4_294_967_295 => {
             output.push(shifted_tag | 26);
             output.push((value >> 24) as u8);
             output.push(((value >> 16) & 255) as u8);
@@ -65,10 +65,10 @@ fn encode_bytes(output: &mut Vec<u8>, bstr: &[u8]) {
 }
 
 /// The major type is 3. The length is as with bstr. The UTF-8-encoded bytes of the string follow.
-fn encode_string(output: &mut Vec<u8>, tstr: &String) {
+fn encode_string(output: &mut Vec<u8>, tstr: &str) {
     let utf8_bytes = tstr.as_bytes();
     common_encode_unsigned(output, 3, utf8_bytes.len() as u64);
-    output.extend_from_slice(&utf8_bytes);
+    output.extend_from_slice(utf8_bytes);
 }
 
 /// The major type is 4. The number of items is encoded as with positive integers. Then follows the
@@ -94,7 +94,7 @@ fn encode_map(output: &mut Vec<u8>, map: &BTreeMap<CborType, CborType>) {
     }
 }
 
-fn encode_tag(output: &mut Vec<u8>, tag: &u64, val: &Box<CborType>) {
+fn encode_tag(output: &mut Vec<u8>, tag: &u64, val: &CborType) {
     common_encode_unsigned(output, 6, *tag);
     output.append(&mut val.serialize());
 }
@@ -109,15 +109,15 @@ impl CborType {
     /// Serialize a Cbor object.
     pub fn serialize(&self) -> Vec<u8> {
         let mut bytes: Vec<u8> = Vec::new();
-        match self {
-            &CborType::Integer(ref unsigned) => encode_unsigned(&mut bytes, *unsigned),
-            &CborType::SignedInteger(ref negative) => encode_negative(&mut bytes, *negative),
-            &CborType::Bytes(ref bstr) => encode_bytes(&mut bytes, &bstr),
-            &CborType::String(ref tstr) => encode_string(&mut bytes, &tstr),
-            &CborType::Array(ref arr) => encode_array(&mut bytes, &arr),
-            &CborType::Map(ref map) => encode_map(&mut bytes, &map),
-            &CborType::Tag(ref t, ref val) => encode_tag(&mut bytes, t, val),
-            &CborType::Null => encode_null(&mut bytes),
+        match *self {
+            CborType::Integer(ref unsigned) => encode_unsigned(&mut bytes, *unsigned),
+            CborType::SignedInteger(ref negative) => encode_negative(&mut bytes, *negative),
+            CborType::Bytes(ref bstr) => encode_bytes(&mut bytes, bstr),
+            CborType::String(ref tstr) => encode_string(&mut bytes, tstr),
+            CborType::Array(ref arr) => encode_array(&mut bytes, arr),
+            CborType::Map(ref map) => encode_map(&mut bytes, map),
+            CborType::Tag(ref t, ref val) => encode_tag(&mut bytes, t, val),
+            CborType::Null => encode_null(&mut bytes),
         };
         bytes
     }

@@ -20,7 +20,7 @@ fn test_rfc6979_test_vector_1() {
     let payload = b"sample";
     assert!(
         nss::verify_signature(
-            nss::SignatureAlgorithm::ES256,
+            &nss::SignatureAlgorithm::ES256,
             test::NIST_P256_TEST_SPKI,
             payload,
             &signature,
@@ -45,7 +45,7 @@ fn test_rfc6979_test_vector_2() {
     let payload = b"test";
     assert!(
         nss::verify_signature(
-            nss::SignatureAlgorithm::ES256,
+            &nss::SignatureAlgorithm::ES256,
             test::NIST_P256_TEST_SPKI,
             payload,
             &signature,
@@ -72,7 +72,7 @@ fn test_tampered_signature_es256() {
     let payload = b"test";
     assert!(
         nss::verify_signature(
-            nss::SignatureAlgorithm::ES256,
+            &nss::SignatureAlgorithm::ES256,
             test::NIST_P256_TEST_SPKI,
             payload,
             &signature,
@@ -98,7 +98,7 @@ fn test_tampered_message_es256() {
     let payload = b"testTAMPERED";
     assert!(
         nss::verify_signature(
-            nss::SignatureAlgorithm::ES256,
+            &nss::SignatureAlgorithm::ES256,
             test::NIST_P256_TEST_SPKI,
             payload,
             &signature,
@@ -209,7 +209,7 @@ fn test_fips186_3_test_vector_1() {
                        0xdc, 0x3d, 0x11, 0x1d, 0x0f, 0xeb, 0x70, 0x06];
     assert!(
         nss::verify_signature(
-            nss::SignatureAlgorithm::PS256,
+            &nss::SignatureAlgorithm::PS256,
             FIPS_RSA_3072_SPKI,
             &payload,
             &signature,

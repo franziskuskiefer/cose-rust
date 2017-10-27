@@ -22,14 +22,14 @@ fn test_rfc6979_test_vector_1() {
     let payload = b"sample";
 
     // Sign.
-    let signature_result = nss::sign(nss::SignatureAlgorithm::ES256, NIST_P256_TEST_PK8, payload);
+    let signature_result = nss::sign(&nss::SignatureAlgorithm::ES256, NIST_P256_TEST_PK8, payload);
     assert!(signature_result.is_ok());
     let signature_result = signature_result.unwrap();
 
     // Verify the signature.
     assert!(
         nss::verify_signature(
-            nss::SignatureAlgorithm::ES256,
+            &nss::SignatureAlgorithm::ES256,
             test::NIST_P256_TEST_SPKI,
             payload,
             &signature_result,

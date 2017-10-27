@@ -5,7 +5,7 @@ use cbor::cbor::{CborError, CborType};
 // We limit the length of any cbor byte array to 128MiB. This is a somewhat
 // arbitrary limit that should work on all platforms and is large enough for
 // any benign data.
-pub const MAX_ARRAY_SIZE: usize = 134217728;
+pub const MAX_ARRAY_SIZE: usize = 134_217_728;
 
 /// Struct holding a cursor and additional information for decoding.
 #[derive(Debug)]
@@ -35,7 +35,7 @@ impl DecoderCursor {
         let x = self.read_bytes(num)?;
         let mut result: u64 = 0;
         for i in (0..num).rev() {
-            result += (x[num - 1 - i] as u64) << (i * 8);
+            result += u64::from(x[num - 1 - i]) << (i * 8);
         }
         Ok(result)
     }
@@ -80,7 +80,7 @@ impl DecoderCursor {
     /// Read a byte string and return it.
     fn read_byte_string(&mut self) -> Result<CborType, CborError> {
         let length = self.read_int()?;
-        if length > usize::max_value() as u64 {
+        if length > MAX_ARRAY_SIZE as u64 {
             return Err(CborError::InputTooLarge);
         }
         let byte_string = self.read_bytes(length as usize)?;
@@ -115,9 +115,8 @@ impl DecoderCursor {
     /// Peeks at the next byte in the cursor, but does not change the position.
     fn peek_byte(&mut self) -> Result<u8, CborError> {
         let x = self.read_bytes(1)?;
-        match self.cursor.seek(SeekFrom::Current(-1)) {
-            Err(_) => return Err(CborError::LibraryError),
-            Ok(_) => {}
+        if self.cursor.seek(SeekFrom::Current(-1)).is_err() {
+            return Err(CborError::LibraryError)
         };
         Ok(x[0])
     }
@@ -146,7 +145,7 @@ impl DecoderCursor {
     }
 }
 
-/// Read the CBOR structure in bytes and return it as a CborType.
+/// Read the CBOR structure in bytes and return it as a `CborType`.
 pub fn decode(bytes: Vec<u8>) -> Result<CborType, CborError> {
     let mut decoder_cursor = DecoderCursor { cursor: Cursor::new(bytes) };
     decoder_cursor.decode_item()

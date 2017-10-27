@@ -1,4 +1,4 @@
-//! This module implements COSE using the cose::decoder and cose::nss bindings.
+//! This module implements COSE using the `cose::decoder` and `cose::nss` bindings.
 
 use cose::nss;
 use cose::decoder::*;
@@ -24,8 +24,8 @@ pub fn verify_signature(payload: &[u8], cose_signature: Vec<u8>) -> Result<(), C
         return Err(CoseError::LibraryFailure);
     }
     let signature_type = &cose_signatures[0].signature_type;
-    let signature_algorithm = match signature_type {
-        &CoseSignatureType::ES256 => nss::SignatureAlgorithm::ES256,
+    let signature_algorithm = match *signature_type {
+        CoseSignatureType::ES256 => nss::SignatureAlgorithm::ES256,
         _ => return Err(CoseError::LibraryFailure),
     };
     let signature_bytes = &cose_signatures[0].signature;
@@ -33,7 +33,7 @@ pub fn verify_signature(payload: &[u8], cose_signature: Vec<u8>) -> Result<(), C
 
     // Verify the parsed signature.
     let verify_result = nss::verify_signature(
-        signature_algorithm,
+        &signature_algorithm,
         &cose_signatures[0].signer_cert,
         real_payload,
         signature_bytes,
@@ -44,7 +44,7 @@ pub fn verify_signature(payload: &[u8], cose_signature: Vec<u8>) -> Result<(), C
     Ok(())
 }
 
-/// Sign the payload and return a serialised COSE_Sign object.
+/// Sign the payload and return a serialised `COSE_Sign` object.
 #[allow(unused_variables)]
 pub fn sign(payload: &[u8]) -> Result<Vec<u8>, CoseError> {
     unimplemented!()

@@ -15,7 +15,7 @@ pub fn setup() {
     START.call_once(|| {
         let null_ptr: *const u8 = ptr::null();
         unsafe {
-            assert!(NSS_NoDB_Init(null_ptr) == SEC_SUCCESS);
+            assert_eq!(NSS_NoDB_Init(null_ptr), SEC_SUCCESS);
         }
     });
 }

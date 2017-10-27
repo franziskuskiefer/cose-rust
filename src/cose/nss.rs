@@ -57,12 +57,12 @@ type SECOidTag = raw::c_uint; // TODO: actually an enum - is this the right size
 const SEC_OID_SHA256: SECOidTag = 191;
 
 type CkMechanismType = raw::c_ulong; // called CK_MECHANISM_TYPE in NSS
-const CKM_ECDSA: CkMechanismType = 0x00001041;
-const CKM_RSA_PKCS_PSS: CkMechanismType = 0x0000000D;
-const CKM_SHA256: CkMechanismType = 0x00000250;
+const CKM_ECDSA: CkMechanismType = 0x0000_1041;
+const CKM_RSA_PKCS_PSS: CkMechanismType = 0x0000_000D;
+const CKM_SHA256: CkMechanismType = 0x0000_0250;
 
 type CkRsaPkcsMgfType = raw::c_ulong; // called CK_RSA_PKCS_MGF_TYPE in NSS
-const CKG_MGF1_SHA256: CkRsaPkcsMgfType = 0x00000002;
+const CKG_MGF1_SHA256: CkRsaPkcsMgfType = 0x0000_0002;
 
 type SECStatus = raw::c_int; // TODO: enum - right size?
 const SEC_SUCCESS: SECStatus = 0; // Called SECSuccess in NSS
@@ -156,7 +156,7 @@ fn hash(payload: &[u8]) -> Result<Vec<u8>, NSSError> {
 /// decoding the subject public key info and running the signature verification algorithm on the
 /// signed data.
 pub fn verify_signature(
-    signature_algorithm: SignatureAlgorithm,
+    signature_algorithm: &SignatureAlgorithm,
     spki: &[u8],
     payload: &[u8],
     signature: &[u8],
@@ -182,7 +182,7 @@ pub fn verify_signature(
         SECKEY_DestroyPublicKey(key);
     });
     let signature_item = SECItem::maybe_new(signature)?;
-    let mechanism = match signature_algorithm {
+    let mechanism = match *signature_algorithm {
         SignatureAlgorithm::ES256 => CKM_ECDSA,
         SignatureAlgorithm::PS256 => CKM_RSA_PKCS_PSS,
     };
@@ -193,7 +193,7 @@ pub fn verify_signature(
     let rsa_pss_params_bytes =
         unsafe { slice::from_raw_parts(rsa_pss_params_ptr, mem::size_of::<CkRsaPkcsPssParams>()) };
     let rsa_pss_params_secitem = SECItem::maybe_new(rsa_pss_params_bytes)?;
-    let params_item: *const SECItem = match signature_algorithm {
+    let params_item: *const SECItem = match *signature_algorithm {
         SignatureAlgorithm::ES256 => ptr::null(),
         SignatureAlgorithm::PS256 => &rsa_pss_params_secitem,
     };
@@ -216,11 +216,11 @@ pub fn verify_signature(
 }
 
 pub fn sign(
-    signature_algorithm: SignatureAlgorithm,
+    signature_algorithm: &SignatureAlgorithm,
     pk8: &[u8],
     payload: &[u8],
 ) -> Result<Vec<u8>, NSSError> {
-    match signature_algorithm {
+    match *signature_algorithm {
         SignatureAlgorithm::ES256 => {}
         SignatureAlgorithm::PS256 => return Err(NSSError::Unimplemented),
     };
