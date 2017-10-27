@@ -1,7 +1,7 @@
 #[cfg(test)]
 use cbor::decoder::*;
 #[cfg(test)]
-use cbor::cbor::*;
+use cbor::*;
 #[cfg(test)]
 use std::collections::BTreeMap;
 
