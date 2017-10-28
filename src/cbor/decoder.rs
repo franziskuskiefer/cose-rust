@@ -116,7 +116,7 @@ impl DecoderCursor {
     fn peek_byte(&mut self) -> Result<u8, CborError> {
         let x = self.read_bytes(1)?;
         if self.cursor.seek(SeekFrom::Current(-1)).is_err() {
-            return Err(CborError::LibraryError)
+            return Err(CborError::LibraryError);
         };
         Ok(x[0])
     }
