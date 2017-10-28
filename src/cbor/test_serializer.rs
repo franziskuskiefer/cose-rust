@@ -1,5 +1,5 @@
 #[cfg(test)]
-use cbor::cbor::CborType;
+use cbor::CborType;
 #[cfg(test)]
 use std::collections::BTreeMap;
 #[cfg(test)]
@@ -504,4 +504,17 @@ fn test_create_array2() {
         write!(&mut out, "{:02x}", x).expect("Unable to write");
     }
     println!("{:?}", out);
+}
+
+#[test]
+fn test_null() {
+    let cbor = CborType::Null;
+    assert_eq!(vec![0xf6], cbor.serialize());
+}
+
+#[test]
+fn test_null_in_array() {
+    let cbor = CborType::Array(vec![CborType::Null,
+         CborType::Null]);
+    assert_eq!(vec![0x82, 0xf6, 0xf6], cbor.serialize());
 }

@@ -10,6 +10,7 @@ build = "build.rs"
 
 [dependencies]
 scopeguard = "0.3"
+clippy = {version = "*", optional = true}
 
 [[bin]]
 name = "cbor"
@@ -18,3 +19,6 @@ path = "src/cbor_bin.rs"
 [lib]
 name = "cose"
 path = "src/lib.rs"
+
+[features]
+default = []

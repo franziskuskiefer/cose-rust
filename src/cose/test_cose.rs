@@ -1,7 +1,7 @@
 #[cfg(test)]
 use cose::test_setup as test;
 #[cfg(test)]
-use cose::cose;
+use cose;
 
 #[cfg(test)]
 const CERT_CHAIN: [u8; 1455] = [
