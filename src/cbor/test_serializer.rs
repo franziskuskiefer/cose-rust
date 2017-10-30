@@ -1,8 +1,5 @@
-#[cfg(test)]
 use cbor::CborType;
-#[cfg(test)]
 use std::collections::BTreeMap;
-#[cfg(test)]
 use std::fmt::Write;
 
 #[test]

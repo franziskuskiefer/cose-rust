@@ -1,21 +1,15 @@
 /// We don't need COSE signing at the moment. But we need to generate test files.
 /// This module implements basic COSE signing.
-
-#[cfg(test)]
 use cose::nss;
-#[cfg(test)]
 use cose::decoder::*;
-#[cfg(test)]
 use cose::CoseError;
-#[cfg(test)]
 use cbor::CborType;
-#[cfg(test)]
 use std::collections::BTreeMap;
 
 // This works only with P256!
-#[cfg(test)]
 fn build_p256_pkcs8(public_key: &[u8], secret_key: &[u8]) -> Vec<u8> {
-    let mut pkcs8: Vec<u8> = vec![
+    let mut pkcs8: Vec<u8> =
+        vec![
         0x30, 0x81, 0x87, // Sequence
             0x02, 0x01, 0x00, // Integer
             0x30, 0x13, // Sequence
@@ -46,7 +40,6 @@ fn build_p256_pkcs8(public_key: &[u8], secret_key: &[u8]) -> Vec<u8> {
 ///        external_aad : bstr,
 ///        payload : bstr
 ///    ]
-#[cfg(test)]
 fn build_signature_structure(payload: &[u8], alg: CoseSignatureType) -> Result<Vec<u8>, CoseError> {
     let mut sig_structure: Vec<CborType> = Vec::new();
     sig_structure.push(CborType::String("Signature".to_string()));
@@ -72,9 +65,9 @@ fn build_signature_structure(payload: &[u8], alg: CoseSignatureType) -> Result<V
     Ok(sig_structure.serialize())
 }
 
-#[cfg(test)]
 fn build_p256_spki(key: &[u8]) -> Vec<u8> {
-    let mut spki = vec![
+    let mut spki =
+        vec![
         0x30, 0x59, // Sequence
             0x30, 0x13, //Sequence
                 0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02, 0x01, // ecPublicKey
@@ -87,7 +80,6 @@ fn build_p256_spki(key: &[u8]) -> Vec<u8> {
 }
 
 /// The key has to be an uncrompressed curve point on the point specified in alg.
-#[cfg(test)]
 pub fn sign(
     payload: &[u8],
     alg: CoseSignatureType,

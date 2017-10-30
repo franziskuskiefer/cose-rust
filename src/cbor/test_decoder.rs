@@ -1,26 +1,20 @@
-#[cfg(test)]
 use cbor::decoder::*;
-#[cfg(test)]
 use cbor::*;
-#[cfg(test)]
 use std::collections::BTreeMap;
 
 // First test all the basic types
-#[cfg(test)]
 fn test_decoder(bytes: Vec<u8>, expected: CborType) {
     let result = decode(bytes);
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), expected);
 }
 
-#[cfg(test)]
 fn test_decoder_error(bytes: Vec<u8>, expected_error: CborError) {
     let result = decode(bytes);
     assert!(result.is_err());
     assert_eq!(result.unwrap_err(), expected_error);
 }
 
-#[cfg(test)]
 fn test_integer(bytes: Vec<u8>, expected: u64) {
     let decoded = decode(bytes).unwrap();
     match decoded {
@@ -29,7 +23,6 @@ fn test_integer(bytes: Vec<u8>, expected: u64) {
     }
 }
 
-#[cfg(test)]
 fn test_integer_all(bytes: Vec<u8>, expected_value: u64) {
     let expected = CborType::Integer(expected_value);
     test_decoder(bytes.clone(), expected);

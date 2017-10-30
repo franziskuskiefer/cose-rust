@@ -1,6 +1,7 @@
 use cbor::decoder::*;
 use cbor::CborType;
 use cose::CoseError;
+use cose::util::build_sig_struct;
 
 const COSE_SIGN_TAG: u64 = 98;
 
@@ -144,24 +145,11 @@ pub fn decode_signature(bytes: Vec<u8>, payload: &[u8]) -> Result<Vec<CoseSignat
     // Read the signature bytes.
     let signature_bytes = &cose_signature[2];
     let signature_bytes = unpack!(Bytes, signature_bytes).clone();
-    // We need to fill out a Sig_structure, which is a CBOR array:
-    //
-    // Sig_structure = [
-    //   context : "Signature" / "Signature1" / "CounterSignature",
-    //   body_protected : empty_or_serialized_map,
-    //   ? sign_protected : empty_or_serialized_map,
-    //   external_aad : bstr,
-    //   payload : bstr
-    // ]
-    //
-    // In this case, the context is "Signature". There is no external_aad, so this defaults to a
-    // zero-length bstr.
-    let mut sig_structure_array: Vec<CborType> = Vec::new();
-    sig_structure_array.push(CborType::String(String::from("Signature")));
-    sig_structure_array.push(cose_sign_array[0].clone());
-    sig_structure_array.push(protected_signature_header_serialized.clone());
-    sig_structure_array.push(CborType::Bytes(Vec::new()));
-    sig_structure_array.push(CborType::Bytes(payload.to_owned()));
+    let sig_structure_array = build_sig_struct(
+        &cose_sign_array[0],
+        protected_signature_header_serialized,
+        payload,
+    );
 
     let signature = CoseSignature {
         signature_type: signature_algorithm,

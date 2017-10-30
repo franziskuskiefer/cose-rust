@@ -1,6 +1,8 @@
 pub mod decoder;
 pub mod serializer;
+#[cfg(test)]
 mod test_decoder;
+#[cfg(test)]
 mod test_serializer;
 
 use std::collections::BTreeMap;
