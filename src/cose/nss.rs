@@ -2,6 +2,8 @@ use std::slice;
 use std::mem;
 use std::ptr;
 use std::os::raw;
+use std::os::raw::c_char;
+use std::ffi::CString;
 
 /// An enum identifying supported signature algorithms. Currently only ECDSA with SHA256 (ES256) and
 /// RSASSA-PSS with SHA-256 (PS256) are supported. Note that with PS256, the salt length is defined
@@ -69,11 +71,11 @@ type SECStatus = raw::c_int; // TODO: enum - right size?
 const SEC_SUCCESS: SECStatus = 0; // Called SECSuccess in NSS
 const SEC_FAILURE: SECStatus = -1; // Called SECFailure in NSS
 
-enum CERTSubjectPublicKeyInfo {}
-
 enum SECKEYPublicKey {}
 enum SECKEYPrivateKey {}
 enum PK11SlotInfo {}
+enum CERTCertificate {}
+enum CERTCertDBHandle {}
 
 const SHA256_LENGTH: usize = 32;
 
@@ -95,13 +97,13 @@ extern "C" {
         wincx: *const raw::c_void,
     ) -> SECStatus;
 
-    fn SECKEY_DecodeDERSubjectPublicKeyInfo(
-        spkider: *const SECItem,
-    ) -> *const CERTSubjectPublicKeyInfo;
-    fn SECKEY_DestroySubjectPublicKeyInfo(spki: *const CERTSubjectPublicKeyInfo);
-
-    fn SECKEY_ExtractPublicKey(spki: *const CERTSubjectPublicKeyInfo) -> *const SECKEYPublicKey;
     fn SECKEY_DestroyPublicKey(pubk: *const SECKEYPublicKey);
+
+    fn CERT_GetDefaultCertDB() -> *const CERTCertDBHandle;
+    fn CERT_DestroyCertificate(cert: *mut CERTCertificate);
+    fn CERT_NewTempCertificate(handle: *const CERTCertDBHandle, derCert: *const SECItem,
+                               nickname: *const c_char, isperm: bool, copyDER: bool) -> *mut CERTCertificate;
+    fn CERT_ExtractPublicKey(cert: *const CERTCertificate) -> *const SECKEYPublicKey;
 
     fn PK11_ImportDERPrivateKeyInfoAndReturnKey(
         slot: *mut PK11SlotInfo,
@@ -126,15 +128,16 @@ extern "C" {
 }
 
 /// An error type describing errors that may be encountered during verification.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum NSSError {
-    DecodingSPKIFailed,
+    ImportCertError,
     DecodingPKCS8Failed,
     InputTooLarge,
     LibraryFailure,
     SignatureVerificationFailed,
     SigningFailed,
     Unimplemented,
+    ExtractPublicKeyFailed,
 }
 
 // XXX: make this work with other hashe algos.
@@ -158,26 +161,44 @@ fn hash(payload: &[u8]) -> Result<Vec<u8>, NSSError> {
 /// signed data.
 pub fn verify_signature(
     signature_algorithm: &SignatureAlgorithm,
-    spki: &[u8],
+    cert: &[u8],
     payload: &[u8],
     signature: &[u8],
 ) -> Result<(), NSSError> {
+    let slot = unsafe { PK11_GetInternalSlot() };
+    if slot.is_null() {
+        println!("Couldn't get the internal NSS slot.");
+        return Err(NSSError::LibraryFailure);
+    }
+
     let hash_buf = hash(payload).unwrap();
     let hash_item = SECItem::maybe_new(hash_buf.as_slice())?;
 
-    let spki_item = SECItem::maybe_new(spki)?;
-    // TODO: helper/macro for pattern of "call unsafe function, check null, defer unsafe release"?
-    let spki_handle = unsafe { SECKEY_DecodeDERSubjectPublicKeyInfo(&spki_item) };
-    if spki_handle.is_null() {
-        return Err(NSSError::DecodingSPKIFailed);
+    // Import DER cert into NSS.
+    for b in cert {
+        print!("{:02x}", b);
+    }
+    println!("");
+    let ee_cert_name = CString::new("ee_cert").unwrap();
+    let der_cert = SECItem::maybe_new(cert)?;
+    let db_handle = unsafe { CERT_GetDefaultCertDB() };
+    if db_handle.is_null() {
+        // TODO #28
+        return Err(NSSError::LibraryFailure);
+    }
+    let nss_cert = unsafe { CERT_NewTempCertificate(db_handle, &der_cert,
+                                                    ee_cert_name.as_ptr(), false, false) };
+    if nss_cert.is_null() {
+        return Err(NSSError::ImportCertError);
     }
     defer!(unsafe {
-        SECKEY_DestroySubjectPublicKeyInfo(spki_handle);
+        CERT_DestroyCertificate(nss_cert);
     });
-    let key = unsafe { SECKEY_ExtractPublicKey(spki_handle) };
+
+    // let rust_cert = CERTCertificate::new(&cert);
+    let key = unsafe { CERT_ExtractPublicKey(nss_cert) };
     if key.is_null() {
-        // TODO: double-check that this can only fail if the library fails
-        return Err(NSSError::LibraryFailure);
+        return Err(NSSError::ExtractPublicKeyFailed);
     }
     defer!(unsafe {
         SECKEY_DestroyPublicKey(key);

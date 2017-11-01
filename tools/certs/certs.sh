@@ -10,8 +10,12 @@ python_path="$python_path:$MOZILLA_CENTRAL/python/PyECC/"
 python_path="$python_path:$MOZILLA_CENTRAL/python/mock-1.0.0/"
 python_path="$python_path:$MOZILLA_CENTRAL/python/rsa/"
 
-case $1 in
-	-c) PYTHONPATH=$python_path "$script_path"/pycert.py "${@:2}" ;;
-	-k) PYTHONPATH=$python_path "$cwd"/pykey.py "${@:2}" ;;
-	*) echo "Use certs.sh -c (cert) or -k (key)"; exit 2 ;;
-esac
+gen_cert() {
+    PYTHONPATH=$python_path "$script_path"/pycert.py "$@" > /tmp/cert.pem
+    openssl x509 -in /tmp/cert.pem -out /tmp/cert.der -outform DER
+    xxd -ps /tmp/cert.der | gsed 's/\([0-9A-Fa-f]\{2\}\)/0x\1, /g' \
+                          | tr -d '\n'
+    echo ""
+}
+
+gen_cert "${@:1}"

@@ -5,6 +5,8 @@ use cose::decoder::*;
 use cose::CoseError;
 use cbor::CborType;
 use std::collections::BTreeMap;
+use cose::util::{build_protected_header, build_protected_sig_header, get_sig_struct_bytes,
+                 build_cose_signature};
 
 // This works only with P256!
 fn build_p256_pkcs8(public_key: &[u8], secret_key: &[u8]) -> Vec<u8> {
@@ -146,4 +148,37 @@ pub fn sign(
     let result = CborType::Tag(cose_sign_tag, Box::new(CborType::Array(cose_signature)))
         .serialize();
     Ok(result)
+}
+
+
+pub fn sign2(
+    payload: &[u8],
+    alg: CoseSignatureType,
+    ee_cert: &[u8],
+    cert_chain: &[&[u8]],
+    pkcs8: &[u8],
+) -> Result<Vec<u8>, CoseError> {
+    let nss_alg = match alg {
+        CoseSignatureType::ES256 => nss::SignatureAlgorithm::ES256,
+        _ => return Err(CoseError::UnkownSignatureScheme),
+    };
+
+    // Build the signature structure containing the protected headers and the
+    // payload to generate the payload that is actually signed.
+    let protected_sig_header_serialized = build_protected_sig_header(ee_cert);
+    let protected_header_serialized = build_protected_header(cert_chain);
+    let payload = get_sig_struct_bytes(
+        protected_sig_header_serialized,
+        protected_header_serialized,
+        payload,
+    );
+
+    let signature = nss::sign(&nss_alg, &pkcs8, &payload);
+    if !signature.is_ok() {
+        return Err(CoseError::SigningFailed);
+    }
+    let signature = signature.unwrap();
+
+    let cose_signature = build_cose_signature(cert_chain, ee_cert, &signature);
+    Ok(cose_signature)
 }

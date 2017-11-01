@@ -5,13 +5,13 @@ pub mod decoder;
 #[cfg(test)]
 mod util;
 
+mod test_decoder;
 #[cfg(test)]
 mod nss;
 #[cfg(test)]
 mod test_setup;
-mod test_nss_verify;
+#[cfg(test)]
 mod test_nss_sign;
-mod test_decoder;
 #[cfg(test)]
 mod cose_sign;
 #[cfg(test)]

@@ -3,6 +3,7 @@ use cose::decoder::*;
 
 #[test]
 #[cfg_attr(rustfmt, rustfmt_skip)]
+#[ignore]
 fn test_single_signature() {
     let bytes: Vec<u8> = vec![
         0xD8, 0x62,

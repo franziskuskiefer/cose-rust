@@ -1,6 +1,33 @@
 use cbor::CborType;
 use std::collections::BTreeMap;
 
+pub fn build_protected_sig_header(ee_cert: &[u8]) -> CborType {
+    // Protected signature header
+    let mut header_map: BTreeMap<CborType, CborType> = BTreeMap::new();
+
+    // Signature type.
+    // TODO #23: don't hard code signature type.
+    header_map.insert(CborType::Integer(1), CborType::SignedInteger(-7));
+
+    // Signer certificate.
+    header_map.insert(CborType::Integer(4), CborType::Bytes(ee_cert.to_vec()));
+
+    let header_map = CborType::Map(header_map).serialize();
+    CborType::Bytes(header_map)
+}
+
+pub fn build_protected_header(cert_chain: &[&[u8]]) -> CborType {
+    let mut cert_array: Vec<CborType> = Vec::new();
+    for cert in cert_chain {
+        cert_array.push(CborType::Bytes(cert.to_vec()));
+    }
+    let mut protected_body_header: BTreeMap<CborType, CborType> = BTreeMap::new();
+    protected_body_header.insert(CborType::Integer(4), CborType::Array(cert_array));
+    let protected_body_header = CborType::Map(protected_body_header).serialize();
+
+    CborType::Bytes(protected_body_header)
+}
+
 // Sig_structure is a CBOR array:
 //
 // Sig_structure = [
@@ -13,20 +40,20 @@ use std::collections::BTreeMap;
 //
 // In this case, the context is "Signature". There is no external_aad, so this defaults to a
 // zero-length bstr.
-pub fn build_sig_struct(
-    cose_sign_array: &CborType,
-    protected_signature_header_serialized: &CborType,
+pub fn get_sig_struct_bytes(
+    protected_body_header_serialized: CborType,
+    protected_signature_header_serialized: CborType,
     payload: &[u8],
-) -> Vec<CborType> {
+) -> Vec<u8> {
     let mut sig_structure_array: Vec<CborType> = Vec::new();
 
     sig_structure_array.push(CborType::String(String::from("Signature")));
-    sig_structure_array.push(cose_sign_array.clone());
-    sig_structure_array.push(protected_signature_header_serialized.clone());
+    sig_structure_array.push(protected_body_header_serialized);
+    sig_structure_array.push(protected_signature_header_serialized);
     sig_structure_array.push(CborType::Bytes(Vec::new()));
-    sig_structure_array.push(CborType::Bytes(payload.to_owned()));
+    sig_structure_array.push(CborType::Bytes(payload.to_vec()));
 
-    return sig_structure_array;
+    return CborType::Array(sig_structure_array).serialize();
 }
 
 // 98(
@@ -63,14 +90,15 @@ pub fn build_cose_signature(cert_chain: &[&[u8]], ee_cert: &[u8], sig_bytes: &[u
     let empty_map: BTreeMap<CborType, CborType> = BTreeMap::new();
 
     // add cert chain as protected header
-    let mut cert_array: Vec<CborType> = Vec::new();
-    for cert in cert_chain {
-        cert_array.push(CborType::Bytes(cert.to_vec()));
-    }
-    let mut protected_body_header: BTreeMap<CborType, CborType> = BTreeMap::new();
-    protected_body_header.insert(CborType::Integer(4), CborType::Array(cert_array));
-    let protected_body_header = CborType::Map(protected_body_header).serialize();
-    cose_signature.push(CborType::Bytes(protected_body_header));
+    // let mut cert_array: Vec<CborType> = Vec::new();
+    // for cert in cert_chain {
+    //     cert_array.push(CborType::Bytes(cert.to_vec()));
+    // }
+    // let mut protected_body_header: BTreeMap<CborType, CborType> = BTreeMap::new();
+    // protected_body_header.insert(CborType::Integer(4), CborType::Array(cert_array));
+    // let protected_body_header = CborType::Map(protected_body_header).serialize();
+    // cose_signature.push(CborType::Bytes(protected_body_header));
+    cose_signature.push(build_protected_header(cert_chain));
 
     // Empty map (unprotected header)
     cose_signature.push(CborType::Map(empty_map.clone()));
@@ -84,17 +112,8 @@ pub fn build_cose_signature(cert_chain: &[&[u8]], ee_cert: &[u8], sig_bytes: &[u
     let mut signature_item: Vec<CborType> = Vec::new();
 
     // Protected signature header
-    let mut header_map: BTreeMap<CborType, CborType> = BTreeMap::new();
-
-    // Signature type.
     // TODO #23: don't hard code signature type.
-    header_map.insert(CborType::Integer(1), CborType::SignedInteger(-7));
-
-    // Signer certificate.
-    header_map.insert(CborType::Integer(4), CborType::Bytes(ee_cert.to_vec()));
-
-    let header_map = CborType::Map(header_map).serialize();
-    signature_item.push(CborType::Bytes(header_map));
+    signature_item.push(build_protected_sig_header(ee_cert));
 
     // The unprotected signature header is empty.
     signature_item.push(CborType::Map(empty_map.clone()));

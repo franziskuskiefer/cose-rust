@@ -1,5 +1,5 @@
 issuer:int-p256
-subject:root-p256
+subject:ee-p256
 issuerKey:secp256r1
 subjectKey:secp256r1
 signature:ecdsaWithSHA256

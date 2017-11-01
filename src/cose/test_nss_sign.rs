@@ -1,28 +1,18 @@
-#[cfg(test)]
 use cose::test_setup as test;
-#[cfg(test)]
 use cose::nss;
-
-#[cfg(test)]
-static NIST_P256_TEST_PK8: &'static [u8] =
-    &[0x30, 0x81, 0x87, 0x02, 0x01, 0x00, 0x30, 0x13, 0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d,
-      0x02, 0x01, 0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03, 0x01, 0x07, 0x04, 0x6d, 0x30,
-      0x6b, 0x02, 0x01, 0x01, 0x04, 0x20, 0xc9, 0xaf, 0xa9, 0xd8, 0x45, 0xba, 0x75, 0x16, 0x6b,
-      0x5c, 0x21, 0x57, 0x67, 0xb1, 0xd6, 0x93, 0x4e, 0x50, 0xc3, 0xdb, 0x36, 0xe8, 0x9b, 0x12,
-      0x7b, 0x8a, 0x62, 0x2b, 0x12, 0x0f, 0x67, 0x21, 0xa1, 0x44, 0x03, 0x42, 0x00, 0x04, 0x60,
-      0xfe, 0xd4, 0xba, 0x25, 0x5a, 0x9d, 0x31, 0xc9, 0x61, 0xeb, 0x74, 0xc6, 0x35, 0x6d, 0x68,
-      0xc0, 0x49, 0xb8, 0x92, 0x3b, 0x61, 0xfa, 0x6c, 0xe6, 0x69, 0x62, 0x2e, 0x60, 0xf2, 0x9f,
-      0xb6, 0x79, 0x03, 0xfe, 0x10, 0x08, 0xb8, 0xbc, 0x99, 0xa4, 0x1a, 0xe9, 0xe9, 0x56, 0x28,
-      0xbc, 0x64, 0xf2, 0xf1, 0xb2, 0x0c, 0x2d, 0x7e, 0x9f, 0x51, 0x77, 0xa3, 0xc2, 0x94, 0xd4,
-      0x46, 0x22, 0x99];
+use cose::nss::NSSError;
 
 #[test]
-fn test_rfc6979_test_vector_1() {
+fn test_nss_sign_verify() {
     test::setup();
     let payload = b"sample";
 
     // Sign.
-    let signature_result = nss::sign(&nss::SignatureAlgorithm::ES256, NIST_P256_TEST_PK8, payload);
+    let signature_result = nss::sign(
+        &nss::SignatureAlgorithm::ES256,
+        &test::PKCS8_P256_EE,
+        payload,
+    );
     assert!(signature_result.is_ok());
     let signature_result = signature_result.unwrap();
 
@@ -30,9 +20,61 @@ fn test_rfc6979_test_vector_1() {
     assert!(
         nss::verify_signature(
             &nss::SignatureAlgorithm::ES256,
-            test::NIST_P256_TEST_SPKI,
+            &test::P256_EE,
             payload,
             &signature_result,
         ).is_ok()
     );
+}
+
+#[test]
+fn test_nss_sign_verify_different_payload() {
+    test::setup();
+    let payload = b"sample";
+
+    // Sign.
+    let signature_result = nss::sign(
+        &nss::SignatureAlgorithm::ES256,
+        &test::PKCS8_P256_EE,
+        payload,
+    );
+    assert!(signature_result.is_ok());
+    let signature_result = signature_result.unwrap();
+
+    // Verify the signature with a different payload.
+    let payload = b"sampli";
+    let verify_result = nss::verify_signature(
+        &nss::SignatureAlgorithm::ES256,
+        &test::P256_EE,
+        payload,
+        &signature_result,
+    );
+    assert!(verify_result.is_err());
+    assert_eq!(verify_result, Err(NSSError::SignatureVerificationFailed));
+}
+
+#[test]
+fn test_nss_sign_verify_wrong_cert() {
+    test::setup();
+    let payload = b"sample";
+
+    // Sign.
+    let signature_result = nss::sign(
+        &nss::SignatureAlgorithm::ES256,
+        &test::PKCS8_P256_EE,
+        payload,
+    );
+    assert!(signature_result.is_ok());
+    let signature_result = signature_result.unwrap();
+
+    // Verify the signature with a different payload.
+    let payload = b"sampli";
+    let verify_result = nss::verify_signature(
+        &nss::SignatureAlgorithm::ES256,
+        &test::P384_EE,
+        payload,
+        &signature_result,
+    );
+    assert!(verify_result.is_err());
+    assert_eq!(verify_result, Err(NSSError::SignatureVerificationFailed));
 }

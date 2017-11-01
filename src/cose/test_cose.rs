@@ -1,6 +1,6 @@
 use cose::test_setup as test;
 use cose::*;
-use cose::cose_sign::sign;
+use cose::cose_sign::{sign, sign2};
 use cose::util::build_cose_signature;
 
 // All keys here are from pykey.py from mozilla-central.
@@ -103,6 +103,7 @@ const P256_EE: [u8; 302] = [
     0x68, 0x65
 ];
 
+#[cfg_attr(rustfmt, rustfmt_skip)]
 const PKCS8_P256_EE: [u8; 139] = [
     0x30, 0x81, 0x87, 0x02, 0x01, 0x00, 0x30, 0x13, 0x06, 0x07, 0x2a,
     0x86, 0x48, 0xce, 0x3d, 0x02, 0x01, 0x06, 0x08, 0x2a, 0x86, 0x48,
@@ -130,12 +131,12 @@ const SIGNATURE_BYTES: [u8; 64] = [
 ];
 
 #[test]
+#[ignore]
 fn test_rfc6979_test_vector_cose_1() {
     test::setup();
     let payload = b"This is the content.";
     let certs: [&[u8]; 2] = [&P256_ROOT, &P256_INT];
-    let cose_signature =
-        build_cose_signature(&certs, &P256_EE, &SIGNATURE_BYTES);
+    let cose_signature = build_cose_signature(&certs, &P256_EE, &SIGNATURE_BYTES);
     for x in cose_signature.clone() {
         print!("{:02x}", x);
     }
@@ -145,10 +146,10 @@ fn test_rfc6979_test_vector_cose_1() {
 
 #[test]
 #[cfg_attr(rustfmt, rustfmt_skip)]
+#[ignore]
 fn test_cose_sign() {
     test::setup();
     let payload = b"This is the content.";
-    #[cfg_attr(rustfmt, rustfmt_skip)]
     let public_key = vec![0x04, 0xba, 0xc5, 0xb1, 0x1c, 0xad, 0x8f, 0x99, 0xf9,
                           0xc7, 0x2b, 0x05, 0xcf, 0x4b, 0x9e, 0x26, 0xd2, 0x44,
                           0xdc, 0x18, 0x9f, 0x74, 0x52, 0x28, 0x25, 0x5a, 0x21,
@@ -162,6 +163,21 @@ fn test_cose_sign() {
                           0xaf, 0xb0, 0x4e, 0x30, 0x67, 0x05, 0xdb, 0x60, 0x90,
                           0x30, 0x85, 0x07, 0xb4, 0xd3];
     let cose_signature = sign(payload, CoseSignatureType::ES256, &public_key, &secret_key);
+    assert!(cose_signature.is_ok());
+    let cose_signature = cose_signature.unwrap();
+
+    // Verify signature.
+    assert!(verify_signature(payload, cose_signature).is_ok());
+}
+
+#[test]
+#[cfg_attr(rustfmt, rustfmt_skip)]
+#[ignore]
+fn test_cose_sign2() {
+    test::setup();
+    let payload = b"This is the content.";
+    let certs: [&[u8]; 2] = [&P256_ROOT, &P256_INT];
+    let cose_signature = sign2(payload, CoseSignatureType::ES256, &P256_EE, &certs, &PKCS8_P256_EE);
     assert!(cose_signature.is_ok());
     let cose_signature = cose_signature.unwrap();
 
