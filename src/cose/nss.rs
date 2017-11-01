@@ -11,7 +11,7 @@ use std::ffi::CString;
 #[derive(Debug)]
 pub enum SignatureAlgorithm {
     ES256,
-    PS256,
+    PS256, // TODO #29:We need a cert for this so we can test it.
 }
 
 type SECItemType = raw::c_uint; // TODO: actually an enum - is this the right size?
@@ -175,10 +175,6 @@ pub fn verify_signature(
     let hash_item = SECItem::maybe_new(hash_buf.as_slice())?;
 
     // Import DER cert into NSS.
-    for b in cert {
-        print!("{:02x}", b);
-    }
-    println!("");
     let ee_cert_name = CString::new("ee_cert").unwrap();
     let der_cert = SECItem::maybe_new(cert)?;
     let db_handle = unsafe { CERT_GetDefaultCertDB() };

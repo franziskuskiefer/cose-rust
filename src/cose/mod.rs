@@ -5,13 +5,12 @@ pub mod decoder;
 #[cfg(test)]
 mod util;
 
-mod test_decoder;
 #[cfg(test)]
 mod nss;
 #[cfg(test)]
 mod test_setup;
 #[cfg(test)]
-mod test_nss_sign;
+mod test_nss;
 #[cfg(test)]
 mod cose_sign;
 #[cfg(test)]
@@ -20,7 +19,7 @@ mod test_cose;
 #[cfg(test)]
 use cose::decoder::*;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum CoseError {
     DecodingFailure,
     LibraryFailure,
@@ -52,6 +51,7 @@ pub fn verify_signature(payload: &[u8], cose_signature: Vec<u8>) -> Result<(), C
     let real_payload = &cose_signatures[0].to_verify;
 
     // Verify the parsed signature.
+    // We ignore the certs field here because we don't verify the certificate.
     let verify_result = nss::verify_signature(
         &signature_algorithm,
         &cose_signatures[0].signer_cert,
