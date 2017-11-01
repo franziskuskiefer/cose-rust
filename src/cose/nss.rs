@@ -236,8 +236,7 @@ pub fn sign(
         PK11_ImportDERPrivateKeyInfoAndReturnKey(
             slot,
             &pkcs8item,
-            ptr::null(),
-            ptr::null(),
+            ptr::null(), ptr::null(),
             false,
             false,
             ku_all,
