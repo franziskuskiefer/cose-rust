@@ -7,8 +7,8 @@ use std::process;
 fn string_to_vec(data: String) -> Vec<u8> {
     let mut bytes: Vec<u8> = Vec::new();
     let mut i = 0;
-    while i < data.len()-1 {
-        let b = match data.get(i..i+2) {
+    while i < data.len() - 1 {
+        let b = match data.get(i..i + 2) {
             Some(x) => x,
             None => "",
         };

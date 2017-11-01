@@ -101,8 +101,13 @@ extern "C" {
 
     fn CERT_GetDefaultCertDB() -> *const CERTCertDBHandle;
     fn CERT_DestroyCertificate(cert: *mut CERTCertificate);
-    fn CERT_NewTempCertificate(handle: *const CERTCertDBHandle, derCert: *const SECItem,
-                               nickname: *const c_char, isperm: bool, copyDER: bool) -> *mut CERTCertificate;
+    fn CERT_NewTempCertificate(
+        handle: *const CERTCertDBHandle,
+        derCert: *const SECItem,
+        nickname: *const c_char,
+        isperm: bool,
+        copyDER: bool,
+    ) -> *mut CERTCertificate;
     fn CERT_ExtractPublicKey(cert: *const CERTCertificate) -> *const SECKEYPublicKey;
 
     fn PK11_ImportDERPrivateKeyInfoAndReturnKey(
@@ -182,8 +187,9 @@ pub fn verify_signature(
         // TODO #28
         return Err(NSSError::LibraryFailure);
     }
-    let nss_cert = unsafe { CERT_NewTempCertificate(db_handle, &der_cert,
-                                                    ee_cert_name.as_ptr(), false, false) };
+    let nss_cert = unsafe {
+        CERT_NewTempCertificate(db_handle, &der_cert, ee_cert_name.as_ptr(), false, false)
+    };
     if nss_cert.is_null() {
         return Err(NSSError::ImportCertError);
     }

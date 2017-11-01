@@ -9,7 +9,8 @@ use cose::cose_sign::sign;
 fn test_cose_sign_verify() {
     test::setup();
     let payload = b"This is the content.";
-    let certs: [&[u8]; 2] = [&test::P256_ROOT, &test::P256_INT];
+    let certs: [&[u8]; 2] = [&test::P256_ROOT,
+                             &test::P256_INT];
     let cose_signature = sign(
         payload,
         CoseSignatureType::ES256,
@@ -28,7 +29,8 @@ fn test_cose_sign_verify() {
 fn test_cose_sign_verify_modified_payload() {
     test::setup();
     let payload = b"This is the content.";
-    let certs: [&[u8]; 2] = [&test::P256_ROOT, &test::P256_INT];
+    let certs: [&[u8]; 2] = [&test::P256_ROOT,
+                             &test::P256_INT];
     let cose_signature = sign(
         payload,
         CoseSignatureType::ES256,
@@ -50,7 +52,8 @@ fn test_cose_sign_verify_modified_payload() {
 fn test_cose_sign_verify_wrong_cert() {
     test::setup();
     let payload = b"This is the content.";
-    let certs: [&[u8]; 2] = [&test::P256_ROOT, &test::P256_INT];
+    let certs: [&[u8]; 2] = [&test::P256_ROOT,
+                             &test::P256_INT];
     let cose_signature = sign(
         payload,
         CoseSignatureType::ES256,
@@ -66,4 +69,3 @@ fn test_cose_sign_verify_wrong_cert() {
     assert!(verify_result.is_err());
     assert_eq!(verify_result, Err(CoseError::VerificationFailed));
 }
-

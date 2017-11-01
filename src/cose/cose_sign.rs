@@ -3,8 +3,8 @@
 use cose::nss;
 use cose::decoder::*;
 use cose::CoseError;
-use cose::util::{build_protected_header, build_protected_sig_header, get_sig_struct_bytes,
-                 build_cose_signature};
+use cose::util::{build_cose_signature, build_protected_header, build_protected_sig_header,
+                 get_sig_struct_bytes};
 
 pub fn sign(
     payload: &[u8],
