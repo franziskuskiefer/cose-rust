@@ -10,7 +10,7 @@ use std::os::raw::c_char;
 #[derive(Debug)]
 pub enum SignatureAlgorithm {
     ES256,
-    PS256, // TODO #29:We need a cert for this so we can test it.
+    PS256,
 }
 
 type SECItemType = raw::c_uint; // TODO: actually an enum - is this the right size?
@@ -51,6 +51,21 @@ impl CkRsaPkcsPssParams {
             mgf: CKG_MGF1_SHA256,
             s_len: 32,
         }
+    }
+
+    fn get_params_item(&self, alg: &SignatureAlgorithm) -> Result<*const SECItem, NSSError> {
+        // This isn't entirely NSS' fault, but it mostly is.
+        let rsa_pss_params_ptr: *const CkRsaPkcsPssParams = self;
+        let rsa_pss_params_ptr: *const u8 = rsa_pss_params_ptr as *const u8;
+        let rsa_pss_params_bytes = unsafe {
+            slice::from_raw_parts(rsa_pss_params_ptr, mem::size_of::<CkRsaPkcsPssParams>())
+        };
+        let rsa_pss_params_secitem = SECItem::maybe_new(rsa_pss_params_bytes)?;
+        let params_item: *const SECItem = match *alg {
+            SignatureAlgorithm::ES256 => ptr::null(),
+            SignatureAlgorithm::PS256 => &rsa_pss_params_secitem,
+        };
+        Ok(params_item)
     }
 }
 
@@ -141,7 +156,6 @@ pub enum NSSError {
     LibraryFailure,
     SignatureVerificationFailed,
     SigningFailed,
-    Unimplemented,
     ExtractPublicKeyFailed,
 }
 
@@ -210,16 +224,7 @@ pub fn verify_signature(
         SignatureAlgorithm::PS256 => CKM_RSA_PKCS_PSS,
     };
     let rsa_pss_params = CkRsaPkcsPssParams::new();
-    // This isn't entirely NSS' fault, but it mostly is.
-    let rsa_pss_params_ptr: *const CkRsaPkcsPssParams = &rsa_pss_params;
-    let rsa_pss_params_ptr: *const u8 = rsa_pss_params_ptr as *const u8;
-    let rsa_pss_params_bytes =
-        unsafe { slice::from_raw_parts(rsa_pss_params_ptr, mem::size_of::<CkRsaPkcsPssParams>()) };
-    let rsa_pss_params_secitem = SECItem::maybe_new(rsa_pss_params_bytes)?;
-    let params_item: *const SECItem = match *signature_algorithm {
-        SignatureAlgorithm::ES256 => ptr::null(),
-        SignatureAlgorithm::PS256 => &rsa_pss_params_secitem,
-    };
+    let params_item = rsa_pss_params.get_params_item(signature_algorithm)?;
     let null_cx_ptr: *const raw::c_void = ptr::null();
     let result = unsafe {
         PK11_VerifyWithMechanism(
@@ -243,10 +248,6 @@ pub fn sign(
     pk8: &[u8],
     payload: &[u8],
 ) -> Result<Vec<u8>, NSSError> {
-    match *signature_algorithm {
-        SignatureAlgorithm::ES256 => {}
-        SignatureAlgorithm::PS256 => return Err(NSSError::Unimplemented),
-    };
     let slot = unsafe { PK11_GetInternalSlot() };
     if slot.is_null() {
         return Err(NSSError::LibraryFailure);
@@ -277,14 +278,19 @@ pub fn sign(
     let hash_buf = hash(payload).unwrap();
     let hash_item = SECItem::maybe_new(hash_buf.as_slice())?;
     let signature_len = unsafe { PK11_SignatureLen(key) };
-    let mut signature: Vec<u8> = Vec::with_capacity(signature_len);
-    // XXX: rewrite without unsafe.
-    unsafe {
-        signature.set_len(signature_len);
-    }
+    // We indirectly pass this to PK11_SignWithMechanism and it gets modified,
+    // so this has to be mut.
+#[allow(unused_mut)]
+    let mut signature: Vec<u8> = vec![0; signature_len];
     let mut signature_item = SECItem::maybe_new(signature.as_slice())?;
+    let mechanism = match *signature_algorithm {
+        SignatureAlgorithm::ES256 => CKM_ECDSA,
+        SignatureAlgorithm::PS256 => CKM_RSA_PKCS_PSS,
+    };
+    let rsa_pss_params = CkRsaPkcsPssParams::new();
+    let params_item = rsa_pss_params.get_params_item(signature_algorithm)?;
     let rv = unsafe {
-        PK11_SignWithMechanism(key, CKM_ECDSA, ptr::null(), &mut signature_item, &hash_item)
+        PK11_SignWithMechanism(key, mechanism, params_item, &mut signature_item, &hash_item)
     };
 
     if rv != SEC_SUCCESS || signature_item.len != signature_len as u32 {

@@ -15,12 +15,12 @@ pub fn sign(
 ) -> Result<Vec<u8>, CoseError> {
     let nss_alg = match alg {
         CoseSignatureType::ES256 => nss::SignatureAlgorithm::ES256,
-        _ => return Err(CoseError::UnkownSignatureScheme),
+        CoseSignatureType::PS256 => nss::SignatureAlgorithm::PS256,
     };
 
     // Build the signature structure containing the protected headers and the
     // payload to generate the payload that is actually signed.
-    let protected_sig_header_serialized = build_protected_sig_header(ee_cert);
+    let protected_sig_header_serialized = build_protected_sig_header(ee_cert, &alg);
     let protected_header_serialized = build_protected_header(cert_chain);
     let payload = get_sig_struct_bytes(
         protected_header_serialized,
@@ -32,6 +32,6 @@ pub fn sign(
         Err(_) => return Err(CoseError::SigningFailed),
         Ok(signature) => signature,
     };
-    let cose_signature = build_cose_signature(cert_chain, ee_cert, &signature);
+    let cose_signature = build_cose_signature(cert_chain, ee_cert, &signature, &alg);
     Ok(cose_signature)
 }

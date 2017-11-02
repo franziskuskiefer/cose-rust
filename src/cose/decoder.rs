@@ -9,8 +9,7 @@ const COSE_SIGN_TAG: u64 = 98;
 #[derive(PartialEq)]
 pub enum CoseSignatureType {
     ES256,
-    ES384,
-    ES512,
+    PS256,
 }
 
 #[derive(Debug)]
@@ -127,16 +126,16 @@ pub fn decode_signature(bytes: Vec<u8>, payload: &[u8]) -> Result<Vec<CoseSignat
         Ok(value) => value,
     };
     let signature_algorithm = get_map_value(&protected_signature_header, &CborType::Integer(1))?;
-    match signature_algorithm {
+    let signature_algorithm = match signature_algorithm {
         CborType::SignedInteger(val) => {
-            if val != -7 {
-                return Err(CoseError::UnexpectedHeaderValue);
+            match val {
+                -7 => CoseSignatureType::ES256,
+                -37 => CoseSignatureType::PS256,
+                _ => return Err(CoseError::UnexpectedHeaderValue),
             }
         }
         _ => return Err(CoseError::UnexpectedType),
     };
-    // TODO #??: don't hard code signature algorithm. Unify algorithm defs.
-    let signature_algorithm = CoseSignatureType::ES256;
 
     let ee_cert = &get_map_value(&protected_signature_header, &CborType::Integer(4))?;
     let ee_cert = unpack!(Bytes, ee_cert).clone();

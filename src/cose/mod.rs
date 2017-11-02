@@ -30,7 +30,7 @@ pub enum CoseError {
     UnexpectedType,
     Unimplemented,
     VerificationFailed,
-    UnkownSignatureScheme,
+    UnknownSignatureScheme,
     SigningFailed,
 }
 
@@ -45,7 +45,7 @@ pub fn verify_signature(payload: &[u8], cose_signature: Vec<u8>) -> Result<(), C
     let signature_type = &cose_signatures[0].signature_type;
     let signature_algorithm = match *signature_type {
         CoseSignatureType::ES256 => nss::SignatureAlgorithm::ES256,
-        _ => return Err(CoseError::LibraryFailure),
+        CoseSignatureType::PS256 => nss::SignatureAlgorithm::PS256,
     };
     let signature_bytes = &cose_signatures[0].signature;
     let real_payload = &cose_signatures[0].to_verify;
