@@ -1,6 +1,7 @@
 use cbor::decoder::*;
 use cbor::CborType;
 use cose::CoseError;
+use cose::util::get_sig_struct_bytes;
 
 const COSE_SIGN_TAG: u64 = 98;
 
@@ -82,7 +83,6 @@ fn get_map_value(map: &CborType, key: &CborType) -> Result<CborType, CoseError> 
 ///     unprotected : `header_map`
 ///     signature : bstr
 /// ]
-
 pub fn decode_signature(bytes: Vec<u8>, payload: &[u8]) -> Result<Vec<CoseSignature>, CoseError> {
     // This has to be a COSE_Sign object, which is a tagged array.
     let tagged_cose_sign = match decode(bytes) {
@@ -108,6 +108,7 @@ pub fn decode_signature(bytes: Vec<u8>, payload: &[u8]) -> Result<Vec<CoseSignat
     let signatures = unpack!(Array, signatures);
 
     // Take the first signature.
+    // TODO #15: support more than 1 signature.
     if signatures.len() < 1 {
         return Err(CoseError::MalformedInput);
     }
@@ -134,41 +135,27 @@ pub fn decode_signature(bytes: Vec<u8>, payload: &[u8]) -> Result<Vec<CoseSignat
         }
         _ => return Err(CoseError::UnexpectedType),
     };
+    // TODO #??: don't hard code signature algorithm. Unify algorithm defs.
     let signature_algorithm = CoseSignatureType::ES256;
 
-    // Read the key ID from the unprotected header.
-    let unprotected_signature_header = &cose_signature[1];
-    let key_id = &get_map_value(unprotected_signature_header, &CborType::Integer(4))?;
-    let key_id = unpack!(Bytes, key_id);
+    let ee_cert = &get_map_value(&protected_signature_header, &CborType::Integer(4))?;
+    let ee_cert = unpack!(Bytes, ee_cert).clone();
 
-    // Read the signature bytes.
+    // Build signature structure to verify.
     let signature_bytes = &cose_signature[2];
     let signature_bytes = unpack!(Bytes, signature_bytes).clone();
-    // We need to fill out a Sig_structure, which is a CBOR array:
-    //
-    // Sig_structure = [
-    //   context : "Signature" / "Signature1" / "CounterSignature",
-    //   body_protected : empty_or_serialized_map,
-    //   ? sign_protected : empty_or_serialized_map,
-    //   external_aad : bstr,
-    //   payload : bstr
-    // ]
-    //
-    // In this case, the context is "Signature". There is no external_aad, so this defaults to a
-    // zero-length bstr.
-    let mut sig_structure_array: Vec<CborType> = Vec::new();
-    sig_structure_array.push(CborType::String(String::from("Signature")));
-    sig_structure_array.push(cose_sign_array[0].clone());
-    sig_structure_array.push(protected_signature_header_serialized.clone());
-    sig_structure_array.push(CborType::Bytes(Vec::new()));
-    sig_structure_array.push(CborType::Bytes(payload.to_owned()));
+    let sig_structure_bytes = get_sig_struct_bytes(
+        cose_sign_array[0].clone(), // Protected body header.
+        protected_signature_header_serialized.clone(),
+        payload,
+    );
 
     let signature = CoseSignature {
         signature_type: signature_algorithm,
         signature: signature_bytes,
-        signer_cert: key_id.clone(),
+        signer_cert: ee_cert,
         certs: Vec::new(),
-        to_verify: CborType::Array(sig_structure_array).serialize(),
+        to_verify: sig_structure_bytes,
     };
     let mut result = Vec::new();
     result.push(signature);

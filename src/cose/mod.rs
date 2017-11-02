@@ -1,17 +1,25 @@
 //! This module implements COSE using the `cose::decoder` and `cose::nss` bindings.
 
+#[cfg(test)]
 pub mod decoder;
-pub mod nss;
+#[cfg(test)]
+mod util;
 
-pub mod test_setup;
-mod test_nss_verify;
-mod test_nss_sign;
-mod test_decoder;
+#[cfg(test)]
+mod nss;
+#[cfg(test)]
+mod test_setup;
+#[cfg(test)]
+mod test_nss;
+#[cfg(test)]
+mod cose_sign;
+#[cfg(test)]
 mod test_cose;
 
+#[cfg(test)]
 use cose::decoder::*;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum CoseError {
     DecodingFailure,
     LibraryFailure,
@@ -22,9 +30,12 @@ pub enum CoseError {
     UnexpectedType,
     Unimplemented,
     VerificationFailed,
+    UnkownSignatureScheme,
+    SigningFailed,
 }
 
 /// Verify a COSE signature.
+#[cfg(test)]
 pub fn verify_signature(payload: &[u8], cose_signature: Vec<u8>) -> Result<(), CoseError> {
     // Parse COSE signature.
     let cose_signatures = decode_signature(cose_signature, payload)?;
@@ -40,6 +51,7 @@ pub fn verify_signature(payload: &[u8], cose_signature: Vec<u8>) -> Result<(), C
     let real_payload = &cose_signatures[0].to_verify;
 
     // Verify the parsed signature.
+    // We ignore the certs field here because we don't verify the certificate.
     let verify_result = nss::verify_signature(
         &signature_algorithm,
         &cose_signatures[0].signer_cert,
@@ -50,10 +62,4 @@ pub fn verify_signature(payload: &[u8], cose_signature: Vec<u8>) -> Result<(), C
         return Err(CoseError::VerificationFailed);
     }
     Ok(())
-}
-
-/// Sign the payload and return a serialised `COSE_Sign` object.
-#[allow(unused_variables)]
-pub fn sign(payload: &[u8]) -> Result<Vec<u8>, CoseError> {
-    unimplemented!()
 }

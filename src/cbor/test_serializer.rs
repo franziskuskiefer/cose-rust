@@ -1,6 +1,4 @@
-#[cfg(test)]
 use cbor::CborType;
-#[cfg(test)]
 use std::collections::BTreeMap;
 
 #[test]

@@ -12,5 +12,9 @@ build = "build.rs"
 scopeguard = "0.3"
 clippy = {version = "*", optional = true}
 
+[lib]
+name = "cose"
+path = "src/lib.rs"
+
 [features]
 default = []
