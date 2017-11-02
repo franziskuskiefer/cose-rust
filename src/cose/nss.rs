@@ -3,7 +3,6 @@ use std::mem;
 use std::ptr;
 use std::os::raw;
 use std::os::raw::c_char;
-use std::ffi::CString;
 
 /// An enum identifying supported signature algorithms. Currently only ECDSA with SHA256 (ES256) and
 /// RSASSA-PSS with SHA-256 (PS256) are supported. Note that with PS256, the salt length is defined
@@ -122,6 +121,7 @@ extern "C" {
         wincx: *const u8,
     ) -> SECStatus;
     fn PK11_GetInternalSlot() -> *mut PK11SlotInfo;
+    fn PK11_FreeSlot(slot: *mut PK11SlotInfo);
     fn PK11_SignatureLen(key: *const SECKEYPrivateKey) -> usize;
     fn PK11_SignWithMechanism(
         key: *const SECKEYPrivateKey,
@@ -172,24 +172,24 @@ pub fn verify_signature(
 ) -> Result<(), NSSError> {
     let slot = unsafe { PK11_GetInternalSlot() };
     if slot.is_null() {
-        println!("Couldn't get the internal NSS slot.");
         return Err(NSSError::LibraryFailure);
     }
+    defer!(unsafe {
+        PK11_FreeSlot(slot);
+    });
 
     let hash_buf = hash(payload).unwrap();
     let hash_item = SECItem::maybe_new(hash_buf.as_slice())?;
 
     // Import DER cert into NSS.
-    let ee_cert_name = CString::new("ee_cert").unwrap();
     let der_cert = SECItem::maybe_new(cert)?;
     let db_handle = unsafe { CERT_GetDefaultCertDB() };
     if db_handle.is_null() {
         // TODO #28
         return Err(NSSError::LibraryFailure);
     }
-    let nss_cert = unsafe {
-        CERT_NewTempCertificate(db_handle, &der_cert, ee_cert_name.as_ptr(), false, false)
-    };
+    let nss_cert =
+        unsafe { CERT_NewTempCertificate(db_handle, &der_cert, ptr::null(), false, true) };
     if nss_cert.is_null() {
         return Err(NSSError::ImportCertError);
     }
@@ -197,7 +197,6 @@ pub fn verify_signature(
         CERT_DestroyCertificate(nss_cert);
     });
 
-    // let rust_cert = CERTCertificate::new(&cert);
     let key = unsafe { CERT_ExtractPublicKey(nss_cert) };
     if key.is_null() {
         return Err(NSSError::ExtractPublicKeyFailed);
@@ -250,9 +249,11 @@ pub fn sign(
     };
     let slot = unsafe { PK11_GetInternalSlot() };
     if slot.is_null() {
-        println!("Couldn't get the internal NSS slot.");
         return Err(NSSError::LibraryFailure);
     }
+    defer!(unsafe {
+        PK11_FreeSlot(slot);
+    });
     let pkcs8item = SECItem::maybe_new(pk8)?;
     let mut key: *mut SECKEYPrivateKey = ptr::null_mut();
     let ku_all = 0xFF;

@@ -90,20 +90,12 @@ pub fn build_cose_signature(cert_chain: &[&[u8]], ee_cert: &[u8], sig_bytes: &[u
     let empty_map: BTreeMap<CborType, CborType> = BTreeMap::new();
 
     // add cert chain as protected header
-    // let mut cert_array: Vec<CborType> = Vec::new();
-    // for cert in cert_chain {
-    //     cert_array.push(CborType::Bytes(cert.to_vec()));
-    // }
-    // let mut protected_body_header: BTreeMap<CborType, CborType> = BTreeMap::new();
-    // protected_body_header.insert(CborType::Integer(4), CborType::Array(cert_array));
-    // let protected_body_header = CborType::Map(protected_body_header).serialize();
-    // cose_signature.push(CborType::Bytes(protected_body_header));
     cose_signature.push(build_protected_header(cert_chain));
 
     // Empty map (unprotected header)
     cose_signature.push(CborType::Map(empty_map.clone()));
 
-    // No content (nil).
+    // No payload (nil).
     cose_signature.push(CborType::Null);
 
     // TODO #15: Handle multiple signatures

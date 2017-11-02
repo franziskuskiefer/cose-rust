@@ -67,8 +67,7 @@ fn test_nss_sign_verify_wrong_cert() {
     assert!(signature_result.is_ok());
     let signature_result = signature_result.unwrap();
 
-    // Verify the signature with a different payload.
-    let payload = b"sampli";
+    // Verify the signature with a wrong cert.
     let verify_result = nss::verify_signature(
         &nss::SignatureAlgorithm::ES256,
         &test::P384_EE,

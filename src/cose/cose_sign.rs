@@ -28,12 +28,10 @@ pub fn sign(
         payload,
     );
 
-    let signature = nss::sign(&nss_alg, &pkcs8, &payload);
-    if !signature.is_ok() {
-        return Err(CoseError::SigningFailed);
-    }
-    let signature = signature.unwrap();
-
+    let signature = match nss::sign(&nss_alg, &pkcs8, &payload) {
+        Err(_) => return Err(CoseError::SigningFailed),
+        Ok(signature) => signature,
+    };
     let cose_signature = build_cose_signature(cert_chain, ee_cert, &signature);
     Ok(cose_signature)
 }

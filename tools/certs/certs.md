@@ -5,5 +5,5 @@ Scripts in this folder require a copy of [mozilla-central](https://hg.mozilla.or
 The helper script `certs.sh` sets all necessary paths and generates certificates.
 The following command generates the end-entity certificate with P256, ECDSA, SHA256.
 
-    MOZILLA_CENTRAL=<patch to mc> ./certs.sh < ee-p256.certspec
+    MOZILLA_CENTRAL=<path to mc> ./certs.sh < ee-p256.certspec
 
