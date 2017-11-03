@@ -1,6 +1,7 @@
 use cose::test_setup as test;
 use cose::*;
 use cose::cose_sign::sign;
+use cose::SignatureAlgorithm;
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
 const COSE_SIGNATURE_BYTES: [u8; 1062] = [
@@ -110,7 +111,7 @@ fn test_cose_decode() {
     let payload = b"This is the content.";
     let cose_signatures = decode_signature(COSE_SIGNATURE_BYTES.to_vec(), payload).unwrap();
     assert_eq!(cose_signatures.len(), 1);
-    assert_eq!(cose_signatures[0].signature_type, CoseSignatureType::ES256);
+    assert_eq!(cose_signatures[0].signature_type, SignatureAlgorithm::ES256);
     assert_eq!(cose_signatures[0].signature, SIGNATURE_BYTES.to_vec());
 }
 
@@ -125,10 +126,10 @@ fn test_cose_sign_verify() {
                              &test::P256_INT];
     let cose_signature = sign(
         payload,
-        CoseSignatureType::ES256,
-        &test::P256_EE,
+        &[SignatureAlgorithm::ES256],
+        &[&test::P256_EE],
         &certs,
-        &test::PKCS8_P256_EE,
+        &[&test::PKCS8_P256_EE],
     );
     assert!(cose_signature.is_ok());
     let cose_signature = cose_signature.unwrap();
@@ -145,10 +146,10 @@ fn test_cose_sign_verify_modified_payload() {
                              &test::P256_INT];
     let cose_signature = sign(
         payload,
-        CoseSignatureType::ES256,
-        &test::P256_EE,
+        &[SignatureAlgorithm::ES256],
+        &[&test::P256_EE],
         &certs,
-        &test::PKCS8_P256_EE,
+        &[&test::PKCS8_P256_EE],
     );
     assert!(cose_signature.is_ok());
     let cose_signature = cose_signature.unwrap();
@@ -168,10 +169,10 @@ fn test_cose_sign_verify_wrong_cert() {
                              &test::P256_INT];
     let cose_signature = sign(
         payload,
-        CoseSignatureType::ES256,
-        &test::P384_EE,
+        &[SignatureAlgorithm::ES256],
+        &[&test::P384_EE],
         &certs,
-        &test::PKCS8_P256_EE,
+        &[&test::PKCS8_P256_EE],
     );
     assert!(cose_signature.is_ok());
     let cose_signature = cose_signature.unwrap();
@@ -190,10 +191,10 @@ fn test_cose_sign_verify_tampered_signature() {
                              &test::P256_INT];
     let cose_signature = sign(
         payload,
-        CoseSignatureType::ES256,
-        &test::P256_EE,
+        &[SignatureAlgorithm::ES256],
+        &[&test::P256_EE],
         &certs,
-        &test::PKCS8_P256_EE,
+        &[&test::PKCS8_P256_EE],
     );
     assert!(cose_signature.is_ok());
     let mut cose_signature = cose_signature.unwrap();
@@ -215,10 +216,10 @@ fn test_cose_sign_verify_rsa() {
                              &test::RSA_INT];
     let cose_signature = sign(
         payload,
-        CoseSignatureType::PS256,
-        &test::RSA_EE,
+        &[SignatureAlgorithm::PS256],
+        &[&test::RSA_EE],
         &certs,
-        &test::PKCS8_RSA_EE,
+        &[&test::PKCS8_RSA_EE],
     );
     assert!(cose_signature.is_ok());
     let cose_signature = cose_signature.unwrap();
@@ -233,10 +234,10 @@ fn test_cose_sign_verify_rsa_modified_payload() {
                              &test::RSA_INT];
     let cose_signature = sign(
         payload,
-        CoseSignatureType::PS256,
-        &test::RSA_EE,
+        &[SignatureAlgorithm::PS256],
+        &[&test::RSA_EE],
         &certs,
-        &test::PKCS8_RSA_EE,
+        &[&test::PKCS8_RSA_EE],
     );
     assert!(cose_signature.is_ok());
     let cose_signature = cose_signature.unwrap();
@@ -254,14 +255,95 @@ fn test_cose_sign_verify_rsa_tampered_signature() {
                              &test::RSA_INT];
     let cose_signature = sign(
         payload,
-        CoseSignatureType::PS256,
-        &test::RSA_EE,
+        &[SignatureAlgorithm::PS256],
+        &[&test::RSA_EE],
         &certs,
-        &test::PKCS8_RSA_EE,
+        &[&test::PKCS8_RSA_EE],
     );
     assert!(cose_signature.is_ok());
     let mut cose_signature = cose_signature.unwrap();
     cose_signature[45] = !cose_signature[45];
+    let verify_result = verify_signature(payload, cose_signature);
+    assert!(verify_result.is_err());
+    assert_eq!(verify_result, Err(CoseError::VerificationFailed));
+}
+
+#[test]
+fn test_cose_sign_verify_two_signatures() {
+    test::setup();
+    let payload = b"This is the content.";
+    let certs: [&[u8]; 4] = [&test::P256_ROOT,
+                             &test::P256_INT,
+                             &test::RSA_ROOT,
+                             &test::RSA_INT];
+    let cose_signature = sign(
+        payload,
+        &[SignatureAlgorithm::ES256,
+          SignatureAlgorithm::PS256],
+        &[&test::P256_EE,
+          &test::RSA_EE],
+        &certs,
+        &[&test::PKCS8_P256_EE,
+          &test::PKCS8_RSA_EE],
+    );
+    assert!(cose_signature.is_ok());
+    let cose_signature = cose_signature.unwrap();
+
+    // Verify signature.
+    assert!(verify_signature(payload, cose_signature).is_ok());
+}
+
+#[test]
+fn test_cose_sign_verify_two_signatures_tampered_payload() {
+    test::setup();
+    let payload = b"This is the content.";
+    let certs: [&[u8]; 4] = [&test::P256_ROOT,
+                             &test::P256_INT,
+                             &test::RSA_ROOT,
+                             &test::RSA_INT];
+    let cose_signature = sign(
+        payload,
+        &[SignatureAlgorithm::ES256,
+          SignatureAlgorithm::PS256],
+        &[&test::P256_EE,
+          &test::RSA_EE],
+        &certs,
+        &[&test::PKCS8_P256_EE,
+          &test::PKCS8_RSA_EE],
+    );
+    assert!(cose_signature.is_ok());
+    let cose_signature = cose_signature.unwrap();
+
+    // Verify signature.
+    let payload = b"This is the content!";
+    let verify_result = verify_signature(payload, cose_signature);
+    assert!(verify_result.is_err());
+    assert_eq!(verify_result, Err(CoseError::VerificationFailed));
+}
+
+#[test]
+fn test_cose_sign_verify_two_signatures_tampered_signature() {
+    test::setup();
+    let payload = b"This is the content.";
+    let certs: [&[u8]; 4] = [&test::P256_ROOT,
+                             &test::P256_INT,
+                             &test::RSA_ROOT,
+                             &test::RSA_INT];
+    let cose_signature = sign(
+        payload,
+        &[SignatureAlgorithm::ES256,
+          SignatureAlgorithm::PS256],
+        &[&test::P256_EE,
+          &test::RSA_EE],
+        &certs,
+        &[&test::PKCS8_P256_EE,
+          &test::PKCS8_RSA_EE],
+    );
+    assert!(cose_signature.is_ok());
+    let mut cose_signature = cose_signature.unwrap();
+    cose_signature[45] = !cose_signature[45];
+
+    // Verify signature.
     let verify_result = verify_signature(payload, cose_signature);
     assert!(verify_result.is_err());
     assert_eq!(verify_result, Err(CoseError::VerificationFailed));

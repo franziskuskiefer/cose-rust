@@ -1,17 +1,17 @@
 use cbor::CborType;
-use cose::decoder::CoseSignatureType;
+use cose::SignatureAlgorithm;
 use std::collections::BTreeMap;
 
-/// Converts a `CoseSignatureType` to its corresponding `CborType`.
+/// Converts a `SignatureAlgorithm` to its corresponding `CborType`.
 /// See RFC 8152 section 8.1 and RFC 8230 section 5.1.
-pub fn signature_type_to_cbor_value(signature_type: &CoseSignatureType) -> CborType {
+pub fn signature_type_to_cbor_value(signature_type: &SignatureAlgorithm) -> CborType {
     CborType::SignedInteger(match signature_type {
-        &CoseSignatureType::ES256 => -7,
-        &CoseSignatureType::PS256 => -37,
+        &SignatureAlgorithm::ES256 => -7,
+        &SignatureAlgorithm::PS256 => -37,
     })
 }
 
-pub fn build_protected_sig_header(ee_cert: &[u8], alg: &CoseSignatureType) -> CborType {
+pub fn build_protected_sig_header(ee_cert: &[u8], alg: &SignatureAlgorithm) -> CborType {
     // Protected signature header
     let mut header_map: BTreeMap<CborType, CborType> = BTreeMap::new();
 
@@ -66,6 +66,22 @@ pub fn get_sig_struct_bytes(
     return CborType::Array(sig_structure_array).serialize();
 }
 
+fn build_sig_struct(ee_cert: &[u8], alg: &SignatureAlgorithm, sig_bytes: &Vec<u8>) -> CborType {
+    // Build the signature item.
+    let mut signature_item: Vec<CborType> = Vec::new();
+
+    // Protected signature header
+    signature_item.push(build_protected_sig_header(ee_cert, alg));
+
+    // The unprotected signature header is empty.
+    let empty_map: BTreeMap<CborType, CborType> = BTreeMap::new();
+    signature_item.push(CborType::Map(empty_map));
+
+    // And finally the signature bytes.
+    signature_item.push(CborType::Bytes(sig_bytes.clone()));
+    CborType::Array(signature_item)
+}
+
 // 98(
 //  [
 //    / protected / h'..', / {
@@ -94,42 +110,34 @@ pub fn get_sig_struct_bytes(
 //  ]
 pub fn build_cose_signature(
     cert_chain: &[&[u8]],
-    ee_cert: &[u8],
-    sig_bytes: &[u8],
-    alg: &CoseSignatureType,
+    ee_certs: &[&[u8]],
+    sig_bytes: &Vec<Vec<u8>>,
+    alg: &[SignatureAlgorithm],
 ) -> Vec<u8> {
     // Building the COSE signature content.
     let mut cose_signature: Vec<CborType> = Vec::new();
-
-    // Empty map.
-    let empty_map: BTreeMap<CborType, CborType> = BTreeMap::new();
 
     // add cert chain as protected header
     cose_signature.push(build_protected_header(cert_chain));
 
     // Empty map (unprotected header)
-    cose_signature.push(CborType::Map(empty_map.clone()));
+    let empty_map: BTreeMap<CborType, CborType> = BTreeMap::new();
+    cose_signature.push(CborType::Map(empty_map));
 
     // No payload (nil).
     cose_signature.push(CborType::Null);
 
-    // TODO #15: Handle multiple signatures
-
-    // Build the signature item.
-    let mut signature_item: Vec<CborType> = Vec::new();
-
-    // Protected signature header
-    signature_item.push(build_protected_sig_header(ee_cert, alg));
-
-    // The unprotected signature header is empty.
-    signature_item.push(CborType::Map(empty_map.clone()));
-
-    // And finally the signature bytes.
-    signature_item.push(CborType::Bytes(sig_bytes.to_vec()));
-    let signature_item = CborType::Array(signature_item);
+    // Create signature items.
+    let mut signatures: Vec<CborType> = Vec::new();
+    assert_eq!(sig_bytes.len(), alg.len());
+    for ((ref signature, ref algorithm), ref ee_cert) in
+        sig_bytes.iter().zip(alg.iter()).zip(ee_certs.iter())
+    {
+        let signature_item = build_sig_struct(ee_cert, &algorithm, &signature);
+        signatures.push(signature_item);
+    }
 
     // Pack the signature item and add everything to the cose signature object.
-    let signatures = vec![signature_item];
     cose_signature.push(CborType::Array(signatures));
 
     // A COSE signature is a tagged array (98).
