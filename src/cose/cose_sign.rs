@@ -4,7 +4,7 @@ use cose::nss;
 use cose::CoseError;
 use cose::util::{build_cose_signature, build_protected_header, build_protected_sig_header,
                  get_sig_struct_bytes};
-use cose::{SignatureParameters, Signature};
+use cose::{Signature, SignatureParameters};
 
 pub fn sign(
     payload: &[u8],

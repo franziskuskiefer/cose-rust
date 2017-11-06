@@ -131,11 +131,7 @@ fn test_cose_sign_verify() {
     let certs: [&[u8]; 2] = [&test::P256_ROOT,
                              &test::P256_INT];
     let params_vec = vec![P256_PARAMS];
-    let cose_signature = sign(
-        payload,
-        &certs,
-        &params_vec,
-    );
+    let cose_signature = sign(payload, &certs, &params_vec);
     assert!(cose_signature.is_ok());
     let cose_signature = cose_signature.unwrap();
 
@@ -150,11 +146,7 @@ fn test_cose_sign_verify_modified_payload() {
     let certs: [&[u8]; 2] = [&test::P256_ROOT,
                              &test::P256_INT];
     let params_vec = vec![P256_PARAMS];
-    let cose_signature = sign(
-        payload,
-        &certs,
-        &params_vec,
-    );
+    let cose_signature = sign(payload, &certs, &params_vec);
     assert!(cose_signature.is_ok());
     let cose_signature = cose_signature.unwrap();
 
@@ -177,11 +169,7 @@ fn test_cose_sign_verify_wrong_cert() {
         pkcs8: &test::PKCS8_P256_EE,
     };
     let params_vec = vec![params];
-    let cose_signature = sign(
-        payload,
-        &certs,
-        &params_vec,
-    );
+    let cose_signature = sign(payload, &certs, &params_vec);
     assert!(cose_signature.is_ok());
     let cose_signature = cose_signature.unwrap();
 
@@ -198,11 +186,7 @@ fn test_cose_sign_verify_tampered_signature() {
     let certs: [&[u8]; 2] = [&test::P256_ROOT,
                              &test::P256_INT];
     let params_vec = vec![P256_PARAMS];
-    let cose_signature = sign(
-        payload,
-        &certs,
-        &params_vec,
-    );
+    let cose_signature = sign(payload, &certs, &params_vec);
     assert!(cose_signature.is_ok());
     let mut cose_signature = cose_signature.unwrap();
 
@@ -228,11 +212,7 @@ fn test_cose_sign_verify_rsa() {
     let certs: [&[u8]; 2] = [&test::RSA_ROOT,
                              &test::RSA_INT];
     let params_vec = vec![RSA_PARAMS];
-    let cose_signature = sign(
-        payload,
-        &certs,
-        &params_vec,
-    );
+    let cose_signature = sign(payload, &certs, &params_vec);
     assert!(cose_signature.is_ok());
     let cose_signature = cose_signature.unwrap();
     assert!(verify_signature(payload, cose_signature).is_ok());
@@ -245,11 +225,7 @@ fn test_cose_sign_verify_rsa_modified_payload() {
     let certs: [&[u8]; 2] = [&test::RSA_ROOT,
                              &test::RSA_INT];
     let params_vec = vec![RSA_PARAMS];
-    let cose_signature = sign(
-        payload,
-        &certs,
-        &params_vec,
-    );
+    let cose_signature = sign(payload, &certs, &params_vec);
     assert!(cose_signature.is_ok());
     let cose_signature = cose_signature.unwrap();
     let payload = b"This is the modified RSA-signed content.";
@@ -265,11 +241,7 @@ fn test_cose_sign_verify_rsa_tampered_signature() {
     let certs: [&[u8]; 2] = [&test::RSA_ROOT,
                              &test::RSA_INT];
     let params_vec = vec![RSA_PARAMS];
-    let cose_signature = sign(
-        payload,
-        &certs,
-        &params_vec,
-    );
+    let cose_signature = sign(payload, &certs, &params_vec);
     assert!(cose_signature.is_ok());
     let mut cose_signature = cose_signature.unwrap();
     cose_signature[45] = !cose_signature[45];
@@ -286,12 +258,9 @@ fn test_cose_sign_verify_two_signatures() {
                              &test::P256_INT,
                              &test::RSA_ROOT,
                              &test::RSA_INT];
-    let params_vec = vec![P256_PARAMS, RSA_PARAMS];
-    let cose_signature = sign(
-        payload,
-        &certs,
-        &params_vec,
-    );
+    let params_vec = vec![P256_PARAMS,
+                          RSA_PARAMS];
+    let cose_signature = sign(payload, &certs, &params_vec);
     assert!(cose_signature.is_ok());
     let cose_signature = cose_signature.unwrap();
 
@@ -307,12 +276,9 @@ fn test_cose_sign_verify_two_signatures_tampered_payload() {
                              &test::P256_INT,
                              &test::RSA_ROOT,
                              &test::RSA_INT];
-    let params_vec = vec![P256_PARAMS, RSA_PARAMS];
-    let cose_signature = sign(
-        payload,
-        &certs,
-        &params_vec,
-    );
+    let params_vec = vec![P256_PARAMS,
+                          RSA_PARAMS];
+    let cose_signature = sign(payload, &certs, &params_vec);
     assert!(cose_signature.is_ok());
     let cose_signature = cose_signature.unwrap();
 
@@ -331,12 +297,9 @@ fn test_cose_sign_verify_two_signatures_tampered_signature() {
                              &test::P256_INT,
                              &test::RSA_ROOT,
                              &test::RSA_INT];
-    let params_vec = vec![P256_PARAMS, RSA_PARAMS];
-    let cose_signature = sign(
-        payload,
-        &certs,
-        &params_vec,
-    );
+    let params_vec = vec![P256_PARAMS,
+                          RSA_PARAMS];
+    let cose_signature = sign(payload, &certs, &params_vec);
     assert!(cose_signature.is_ok());
     let mut cose_signature = cose_signature.unwrap();
     cose_signature[45] = !cose_signature[45];

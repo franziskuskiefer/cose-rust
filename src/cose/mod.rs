@@ -55,6 +55,7 @@ pub struct Signature<'a> {
 pub enum SignatureAlgorithm {
     ES256,
     PS256,
+    ES384,
 }
 
 /// Verify a COSE signature.

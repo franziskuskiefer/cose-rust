@@ -8,6 +8,7 @@ use cose::Signature;
 pub fn signature_type_to_cbor_value(signature_type: &SignatureAlgorithm) -> CborType {
     CborType::SignedInteger(match signature_type {
         &SignatureAlgorithm::ES256 => -7,
+        &SignatureAlgorithm::ES384 => -35,
         &SignatureAlgorithm::PS256 => -37,
     })
 }
