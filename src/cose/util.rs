@@ -1,6 +1,7 @@
 use cbor::CborType;
 use cose::SignatureAlgorithm;
 use std::collections::BTreeMap;
+use cose::Signature;
 
 /// Converts a `SignatureAlgorithm` to its corresponding `CborType`.
 /// See RFC 8152 section 8.1 and RFC 8230 section 5.1.
@@ -108,12 +109,7 @@ fn build_sig_struct(ee_cert: &[u8], alg: &SignatureAlgorithm, sig_bytes: &Vec<u8
 //      ]
 //    ]
 //  ]
-pub fn build_cose_signature(
-    cert_chain: &[&[u8]],
-    ee_certs: &[&[u8]],
-    sig_bytes: &Vec<Vec<u8>>,
-    alg: &[SignatureAlgorithm],
-) -> Vec<u8> {
+pub fn build_cose_signature(cert_chain: &[&[u8]], signature_vec: &Vec<Signature>) -> Vec<u8> {
     // Building the COSE signature content.
     let mut cose_signature: Vec<CborType> = Vec::new();
 
@@ -129,11 +125,12 @@ pub fn build_cose_signature(
 
     // Create signature items.
     let mut signatures: Vec<CborType> = Vec::new();
-    assert_eq!(sig_bytes.len(), alg.len());
-    for ((ref signature, ref algorithm), ref ee_cert) in
-        sig_bytes.iter().zip(alg.iter()).zip(ee_certs.iter())
-    {
-        let signature_item = build_sig_struct(ee_cert, &algorithm, &signature);
+    for signature in signature_vec {
+        let signature_item = build_sig_struct(
+            signature.parameter.certificate,
+            &signature.parameter.algorithm,
+            &signature.signature_bytes,
+        );
         signatures.push(signature_item);
     }
 

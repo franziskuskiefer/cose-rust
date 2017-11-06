@@ -34,6 +34,19 @@ pub enum CoseError {
     SigningFailed,
 }
 
+#[derive(Debug)]
+pub struct SignatureParameters<'a> {
+    certificate: &'a [u8],
+    algorithm: SignatureAlgorithm,
+    pkcs8: &'a [u8],
+}
+
+#[derive(Debug)]
+pub struct Signature<'a> {
+    parameter: &'a SignatureParameters<'a>,
+    signature_bytes: Vec<u8>,
+}
+
 /// An enum identifying supported signature algorithms. Currently only ECDSA with SHA256 (ES256) and
 /// RSASSA-PSS with SHA-256 (PS256) are supported. Note that with PS256, the salt length is defined
 /// to be 32 bytes.
@@ -57,8 +70,6 @@ pub fn verify_signature(payload: &[u8], cose_signature: Vec<u8>) -> Result<(), C
         let signature_algorithm = &signature.signature_type;
         let signature_bytes = &signature.signature;
         let real_payload = &signature.to_verify;
-
-        println!("Verifying signature {:?}", signature_algorithm);
 
         // Verify the parsed signatures.
         // We ignore the certs field here because we don't verify the certificate.
