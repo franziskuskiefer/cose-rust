@@ -10,7 +10,8 @@ type VerifyCallback = extern "C" fn(*const u8, /* payload */
                                     *const u8, /* cert_chain */
                                     usize, /* cert_chain len */
                                     *const u8, /* signare cert */
-                                    usize /*signare cert len */) -> bool;
+                                    usize /*signare cert len */)
+                                    -> bool;
 
 #[no_mangle]
 pub unsafe extern "C" fn verify_signature_with_cpp(
