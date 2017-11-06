@@ -1,17 +1,9 @@
 use cbor::decoder::*;
 use cbor::CborType;
-use cose::CoseError;
+use cose::{CoseError, CoseSignatureType};
 use cose::util::get_sig_struct_bytes;
 
 const COSE_SIGN_TAG: u64 = 98;
-
-#[derive(Debug)]
-#[derive(PartialEq)]
-pub enum CoseSignatureType {
-    ES256,
-    ES384,
-    ES512,
-}
 
 #[derive(Debug)]
 pub struct CoseSignature {

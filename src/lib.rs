@@ -8,3 +8,7 @@ extern crate scopeguard;
 #[macro_use]
 pub mod cbor;
 pub mod cose;
+
+// This is the C API we expose.
+mod capi;
+pub use capi::*;

@@ -1,6 +1,8 @@
 use cbor::CborType;
+#[cfg(test)]
 use std::collections::BTreeMap;
 
+#[cfg(test)]
 pub fn build_protected_sig_header(ee_cert: &[u8]) -> CborType {
     // Protected signature header
     let mut header_map: BTreeMap<CborType, CborType> = BTreeMap::new();
@@ -16,6 +18,7 @@ pub fn build_protected_sig_header(ee_cert: &[u8]) -> CborType {
     CborType::Bytes(header_map)
 }
 
+#[cfg(test)]
 pub fn build_protected_header(cert_chain: &[&[u8]]) -> CborType {
     let mut cert_array: Vec<CborType> = Vec::new();
     for cert in cert_chain {
@@ -82,6 +85,7 @@ pub fn get_sig_struct_bytes(
 //      ]
 //    ]
 //  ]
+#[cfg(test)]
 pub fn build_cose_signature(cert_chain: &[&[u8]], ee_cert: &[u8], sig_bytes: &[u8]) -> Vec<u8> {
     // Building the COSE signature content.
     let mut cose_signature: Vec<CborType> = Vec::new();

@@ -1,8 +1,6 @@
 //! This module implements COSE using the `cose::decoder` and `cose::nss` bindings.
 
-#[cfg(test)]
 pub mod decoder;
-#[cfg(test)]
 mod util;
 
 #[cfg(test)]
@@ -32,6 +30,14 @@ pub enum CoseError {
     VerificationFailed,
     UnkownSignatureScheme,
     SigningFailed,
+}
+
+#[derive(Debug)]
+#[derive(PartialEq)]
+pub enum CoseSignatureType {
+    ES256,
+    ES384,
+    ES512,
 }
 
 /// Verify a COSE signature.
