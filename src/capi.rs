@@ -63,7 +63,7 @@ pub unsafe extern "C" fn verify_signature_with_cpp(
         cose_signatures[0].signer_cert.len(),
         signature_bytes.as_ptr(),
         signature_bytes.len(),
-        signature_type
+        signature_type,
     );
 
     result
