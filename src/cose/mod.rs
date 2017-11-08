@@ -1,8 +1,6 @@
 //! This module implements COSE using the `cose::decoder` and `cose::nss` bindings.
 
-#[cfg(test)]
 pub mod decoder;
-#[cfg(test)]
 mod util;
 
 #[cfg(test)]
