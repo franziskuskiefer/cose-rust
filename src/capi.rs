@@ -44,27 +44,38 @@ pub unsafe extern "C" fn verify_signature_with_cpp(
     if cose_signatures.len() < 1 {
         return false;
     }
-    let signature_type = &cose_signatures[0].signature_type;
-    // ES256 = 0, ES384 = 1, ES521 = 2, PS256 = 3
-    let signature_type = match *signature_type {
-        SignatureAlgorithm::ES256 => 0,
-        _ => return false,
-    };
-    let signature_bytes = &cose_signatures[0].signature;
-    let real_payload = &cose_signatures[0].to_verify;
 
-    // Call callback to verify the parsed signatures.
-    let result = verify_callback(
-        real_payload.as_ptr(),
-        real_payload.len(),
-        cose_signatures[0].certs.as_ptr(),
-        cose_signatures[0].certs.len(),
-        cose_signatures[0].signer_cert.as_ptr(),
-        cose_signatures[0].signer_cert.len(),
-        signature_bytes.as_ptr(),
-        signature_bytes.len(),
-        signature_type,
-    );
+    let mut result = true;
+    for cose_signature in cose_signatures {
+        let signature_type = cose_signature.signature_type;
+        // ES256 = 0, ES384 = 1, ES521 = 2, PS256 = 3
+        let signature_type = match signature_type {
+            SignatureAlgorithm::ES256 => 0,
+            SignatureAlgorithm::ES384 => 1,
+            SignatureAlgorithm::ES512 => 2,
+            SignatureAlgorithm::PS256 => 3,
+        };
+        let signature_bytes = cose_signature.signature;
+        let real_payload = cose_signature.to_verify;
+
+        // Call callback to verify the parsed signatures.
+        result &= verify_callback(
+            real_payload.as_ptr(),
+            real_payload.len(),
+            cose_signature.certs.as_ptr(),
+            cose_signature.certs.len(),
+            cose_signature.signer_cert.as_ptr(),
+            cose_signature.signer_cert.len(),
+            signature_bytes.as_ptr(),
+            signature_bytes.len(),
+            signature_type,
+        );
+
+        // We can stop early. The cose_signature is not valid.
+        if !result {
+            return result;
+        }
+    }
 
     result
 }

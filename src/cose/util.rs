@@ -1,11 +1,14 @@
 use cbor::CborType;
+#[cfg(test)]
 use cose::SignatureAlgorithm;
 #[cfg(test)]
 use std::collections::BTreeMap;
+#[cfg(test)]
 use cose::Signature;
 
 /// Converts a `SignatureAlgorithm` to its corresponding `CborType`.
 /// See RFC 8152 section 8.1 and RFC 8230 section 5.1.
+#[cfg(test)]
 pub fn signature_type_to_cbor_value(signature_type: &SignatureAlgorithm) -> CborType {
     CborType::SignedInteger(match signature_type {
         &SignatureAlgorithm::ES256 => -7,
@@ -72,6 +75,7 @@ pub fn get_sig_struct_bytes(
     return CborType::Array(sig_structure_array).serialize();
 }
 
+#[cfg(test)]
 fn build_sig_struct(ee_cert: &[u8], alg: &SignatureAlgorithm, sig_bytes: &Vec<u8>) -> CborType {
     // Build the signature item.
     let mut signature_item: Vec<CborType> = Vec::new();
