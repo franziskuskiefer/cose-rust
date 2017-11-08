@@ -5,6 +5,6 @@ fn main() {
     // the build will fail.
     let lib_dir = env::var("NSS_LIB_DIR");
     if lib_dir.is_ok() {
-        println!("cargo:rustc-link-search=native={}", lib_dir.unwrap());
+        println!("cargo:rustc-link-search={}", lib_dir.unwrap());
     }
 }

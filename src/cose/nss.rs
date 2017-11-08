@@ -2,13 +2,15 @@ use std::slice;
 use std::mem;
 use std::ptr;
 use std::os::raw;
+use std::os::raw::c_char;
 
 /// An enum identifying supported signature algorithms. Currently only ECDSA with SHA256 (ES256) and
 /// RSASSA-PSS with SHA-256 (PS256) are supported. Note that with PS256, the salt length is defined
 /// to be 32 bytes.
+#[derive(Debug)]
 pub enum SignatureAlgorithm {
     ES256,
-    PS256,
+    PS256, // TODO #29:We need a cert for this so we can test it.
 }
 
 type SECItemType = raw::c_uint; // TODO: actually an enum - is this the right size?
@@ -57,22 +59,22 @@ type SECOidTag = raw::c_uint; // TODO: actually an enum - is this the right size
 const SEC_OID_SHA256: SECOidTag = 191;
 
 type CkMechanismType = raw::c_ulong; // called CK_MECHANISM_TYPE in NSS
-const CKM_ECDSA: CkMechanismType = 0x00001041;
-const CKM_RSA_PKCS_PSS: CkMechanismType = 0x0000000D;
-const CKM_SHA256: CkMechanismType = 0x00000250;
+const CKM_ECDSA: CkMechanismType = 0x0000_1041;
+const CKM_RSA_PKCS_PSS: CkMechanismType = 0x0000_000D;
+const CKM_SHA256: CkMechanismType = 0x0000_0250;
 
 type CkRsaPkcsMgfType = raw::c_ulong; // called CK_RSA_PKCS_MGF_TYPE in NSS
-const CKG_MGF1_SHA256: CkRsaPkcsMgfType = 0x00000002;
+const CKG_MGF1_SHA256: CkRsaPkcsMgfType = 0x0000_0002;
 
 type SECStatus = raw::c_int; // TODO: enum - right size?
 const SEC_SUCCESS: SECStatus = 0; // Called SECSuccess in NSS
 const SEC_FAILURE: SECStatus = -1; // Called SECFailure in NSS
 
-enum CERTSubjectPublicKeyInfo {}
-
 enum SECKEYPublicKey {}
 enum SECKEYPrivateKey {}
 enum PK11SlotInfo {}
+enum CERTCertificate {}
+enum CERTCertDBHandle {}
 
 const SHA256_LENGTH: usize = 32;
 
@@ -94,13 +96,18 @@ extern "C" {
         wincx: *const raw::c_void,
     ) -> SECStatus;
 
-    fn SECKEY_DecodeDERSubjectPublicKeyInfo(
-        spkider: *const SECItem,
-    ) -> *const CERTSubjectPublicKeyInfo;
-    fn SECKEY_DestroySubjectPublicKeyInfo(spki: *const CERTSubjectPublicKeyInfo);
-
-    fn SECKEY_ExtractPublicKey(spki: *const CERTSubjectPublicKeyInfo) -> *const SECKEYPublicKey;
     fn SECKEY_DestroyPublicKey(pubk: *const SECKEYPublicKey);
+
+    fn CERT_GetDefaultCertDB() -> *const CERTCertDBHandle;
+    fn CERT_DestroyCertificate(cert: *mut CERTCertificate);
+    fn CERT_NewTempCertificate(
+        handle: *const CERTCertDBHandle,
+        derCert: *const SECItem,
+        nickname: *const c_char,
+        isperm: bool,
+        copyDER: bool,
+    ) -> *mut CERTCertificate;
+    fn CERT_ExtractPublicKey(cert: *const CERTCertificate) -> *const SECKEYPublicKey;
 
     fn PK11_ImportDERPrivateKeyInfoAndReturnKey(
         slot: *mut PK11SlotInfo,
@@ -114,6 +121,7 @@ extern "C" {
         wincx: *const u8,
     ) -> SECStatus;
     fn PK11_GetInternalSlot() -> *mut PK11SlotInfo;
+    fn PK11_FreeSlot(slot: *mut PK11SlotInfo);
     fn PK11_SignatureLen(key: *const SECKEYPrivateKey) -> usize;
     fn PK11_SignWithMechanism(
         key: *const SECKEYPrivateKey,
@@ -125,15 +133,16 @@ extern "C" {
 }
 
 /// An error type describing errors that may be encountered during verification.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum NSSError {
-    DecodingSPKIFailed,
+    ImportCertError,
     DecodingPKCS8Failed,
     InputTooLarge,
     LibraryFailure,
     SignatureVerificationFailed,
     SigningFailed,
     Unimplemented,
+    ExtractPublicKeyFailed,
 }
 
 // XXX: make this work with other hashe algos.
@@ -156,33 +165,47 @@ fn hash(payload: &[u8]) -> Result<Vec<u8>, NSSError> {
 /// decoding the subject public key info and running the signature verification algorithm on the
 /// signed data.
 pub fn verify_signature(
-    signature_algorithm: SignatureAlgorithm,
-    spki: &[u8],
+    signature_algorithm: &SignatureAlgorithm,
+    cert: &[u8],
     payload: &[u8],
     signature: &[u8],
 ) -> Result<(), NSSError> {
+    let slot = unsafe { PK11_GetInternalSlot() };
+    if slot.is_null() {
+        return Err(NSSError::LibraryFailure);
+    }
+    defer!(unsafe {
+        PK11_FreeSlot(slot);
+    });
+
     let hash_buf = hash(payload).unwrap();
     let hash_item = SECItem::maybe_new(hash_buf.as_slice())?;
 
-    let spki_item = SECItem::maybe_new(spki)?;
-    // TODO: helper/macro for pattern of "call unsafe function, check null, defer unsafe release"?
-    let spki_handle = unsafe { SECKEY_DecodeDERSubjectPublicKeyInfo(&spki_item) };
-    if spki_handle.is_null() {
-        return Err(NSSError::DecodingSPKIFailed);
+    // Import DER cert into NSS.
+    let der_cert = SECItem::maybe_new(cert)?;
+    let db_handle = unsafe { CERT_GetDefaultCertDB() };
+    if db_handle.is_null() {
+        // TODO #28
+        return Err(NSSError::LibraryFailure);
+    }
+    let nss_cert =
+        unsafe { CERT_NewTempCertificate(db_handle, &der_cert, ptr::null(), false, true) };
+    if nss_cert.is_null() {
+        return Err(NSSError::ImportCertError);
     }
     defer!(unsafe {
-        SECKEY_DestroySubjectPublicKeyInfo(spki_handle);
+        CERT_DestroyCertificate(nss_cert);
     });
-    let key = unsafe { SECKEY_ExtractPublicKey(spki_handle) };
+
+    let key = unsafe { CERT_ExtractPublicKey(nss_cert) };
     if key.is_null() {
-        // TODO: double-check that this can only fail if the library fails
-        return Err(NSSError::LibraryFailure);
+        return Err(NSSError::ExtractPublicKeyFailed);
     }
     defer!(unsafe {
         SECKEY_DestroyPublicKey(key);
     });
     let signature_item = SECItem::maybe_new(signature)?;
-    let mechanism = match signature_algorithm {
+    let mechanism = match *signature_algorithm {
         SignatureAlgorithm::ES256 => CKM_ECDSA,
         SignatureAlgorithm::PS256 => CKM_RSA_PKCS_PSS,
     };
@@ -193,7 +216,7 @@ pub fn verify_signature(
     let rsa_pss_params_bytes =
         unsafe { slice::from_raw_parts(rsa_pss_params_ptr, mem::size_of::<CkRsaPkcsPssParams>()) };
     let rsa_pss_params_secitem = SECItem::maybe_new(rsa_pss_params_bytes)?;
-    let params_item: *const SECItem = match signature_algorithm {
+    let params_item: *const SECItem = match *signature_algorithm {
         SignatureAlgorithm::ES256 => ptr::null(),
         SignatureAlgorithm::PS256 => &rsa_pss_params_secitem,
     };
@@ -216,19 +239,21 @@ pub fn verify_signature(
 }
 
 pub fn sign(
-    signature_algorithm: SignatureAlgorithm,
+    signature_algorithm: &SignatureAlgorithm,
     pk8: &[u8],
     payload: &[u8],
 ) -> Result<Vec<u8>, NSSError> {
-    match signature_algorithm {
+    match *signature_algorithm {
         SignatureAlgorithm::ES256 => {}
         SignatureAlgorithm::PS256 => return Err(NSSError::Unimplemented),
     };
     let slot = unsafe { PK11_GetInternalSlot() };
     if slot.is_null() {
-        println!("Couldn't get the internal NSS slot.");
         return Err(NSSError::LibraryFailure);
     }
+    defer!(unsafe {
+        PK11_FreeSlot(slot);
+    });
     let pkcs8item = SECItem::maybe_new(pk8)?;
     let mut key: *mut SECKEYPrivateKey = ptr::null_mut();
     let ku_all = 0xFF;

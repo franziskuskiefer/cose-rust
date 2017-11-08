@@ -1,6 +1,4 @@
-#[cfg(test)]
-use cbor::cbor::CborType;
-#[cfg(test)]
+use cbor::CborType;
 use std::collections::BTreeMap;
 
 #[test]
@@ -296,4 +294,17 @@ fn test_tagged_item() {
 
     let cbor = CborType::Tag(0x62, Box::new(CborType::Array(vec![]).clone()));
     assert_eq!(vec![0xD8, 0x62, 0x80], cbor.serialize());
+}
+
+#[test]
+fn test_null() {
+    let cbor = CborType::Null;
+    assert_eq!(vec![0xf6], cbor.serialize());
+}
+
+#[test]
+fn test_null_in_array() {
+    let cbor = CborType::Array(vec![CborType::Null,
+         CborType::Null]);
+    assert_eq!(vec![0x82, 0xf6, 0xf6], cbor.serialize());
 }
