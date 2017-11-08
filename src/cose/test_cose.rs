@@ -206,3 +206,63 @@ fn test_cose_sign_verify_tampered_signature() {
     assert!(verify_result.is_err());
     assert_eq!(verify_result, Err(CoseError::VerificationFailed));
 }
+
+#[test]
+fn test_cose_sign_verify_rsa() {
+    test::setup();
+    let payload = b"This is the RSA-signed content.";
+    let certs: [&[u8]; 2] = [&test::RSA_ROOT,
+                             &test::RSA_INT];
+    let cose_signature = sign(
+        payload,
+        CoseSignatureType::PS256,
+        &test::RSA_EE,
+        &certs,
+        &test::PKCS8_RSA_EE,
+    );
+    assert!(cose_signature.is_ok());
+    let cose_signature = cose_signature.unwrap();
+    assert!(verify_signature(payload, cose_signature).is_ok());
+}
+
+#[test]
+fn test_cose_sign_verify_rsa_modified_payload() {
+    test::setup();
+    let payload = b"This is the RSA-signed content.";
+    let certs: [&[u8]; 2] = [&test::RSA_ROOT,
+                             &test::RSA_INT];
+    let cose_signature = sign(
+        payload,
+        CoseSignatureType::PS256,
+        &test::RSA_EE,
+        &certs,
+        &test::PKCS8_RSA_EE,
+    );
+    assert!(cose_signature.is_ok());
+    let cose_signature = cose_signature.unwrap();
+    let payload = b"This is the modified RSA-signed content.";
+    let verify_result = verify_signature(payload, cose_signature);
+    assert!(verify_result.is_err());
+    assert_eq!(verify_result, Err(CoseError::VerificationFailed));
+}
+
+#[test]
+fn test_cose_sign_verify_rsa_tampered_signature() {
+    test::setup();
+    let payload = b"This is the RSA-signed content.";
+    let certs: [&[u8]; 2] = [&test::RSA_ROOT,
+                             &test::RSA_INT];
+    let cose_signature = sign(
+        payload,
+        CoseSignatureType::PS256,
+        &test::RSA_EE,
+        &certs,
+        &test::PKCS8_RSA_EE,
+    );
+    assert!(cose_signature.is_ok());
+    let mut cose_signature = cose_signature.unwrap();
+    cose_signature[45] = !cose_signature[45];
+    let verify_result = verify_signature(payload, cose_signature);
+    assert!(verify_result.is_err());
+    assert_eq!(verify_result, Err(CoseError::VerificationFailed));
+}

@@ -1,13 +1,23 @@
 use cbor::CborType;
+use cose::decoder::CoseSignatureType;
 use std::collections::BTreeMap;
 
-pub fn build_protected_sig_header(ee_cert: &[u8]) -> CborType {
+/// Converts a `CoseSignatureType` to its corresponding `CborType`.
+/// See RFC 8152 section 8.1 and RFC 8230 section 5.1.
+pub fn signature_type_to_cbor_value(signature_type: &CoseSignatureType) -> CborType {
+    CborType::SignedInteger(match signature_type {
+        &CoseSignatureType::ES256 => -7,
+        &CoseSignatureType::PS256 => -37,
+    })
+}
+
+pub fn build_protected_sig_header(ee_cert: &[u8], alg: &CoseSignatureType) -> CborType {
     // Protected signature header
     let mut header_map: BTreeMap<CborType, CborType> = BTreeMap::new();
 
     // Signature type.
-    // TODO #23: don't hard code signature type.
-    header_map.insert(CborType::Integer(1), CborType::SignedInteger(-7));
+    let signature_type_value = signature_type_to_cbor_value(alg);
+    header_map.insert(CborType::Integer(1), signature_type_value);
 
     // Signer certificate.
     header_map.insert(CborType::Integer(4), CborType::Bytes(ee_cert.to_vec()));
@@ -82,7 +92,12 @@ pub fn get_sig_struct_bytes(
 //      ]
 //    ]
 //  ]
-pub fn build_cose_signature(cert_chain: &[&[u8]], ee_cert: &[u8], sig_bytes: &[u8]) -> Vec<u8> {
+pub fn build_cose_signature(
+    cert_chain: &[&[u8]],
+    ee_cert: &[u8],
+    sig_bytes: &[u8],
+    alg: &CoseSignatureType,
+) -> Vec<u8> {
     // Building the COSE signature content.
     let mut cose_signature: Vec<CborType> = Vec::new();
 
@@ -104,8 +119,7 @@ pub fn build_cose_signature(cert_chain: &[&[u8]], ee_cert: &[u8], sig_bytes: &[u
     let mut signature_item: Vec<CborType> = Vec::new();
 
     // Protected signature header
-    // TODO #23: don't hard code signature type.
-    signature_item.push(build_protected_sig_header(ee_cert));
+    signature_item.push(build_protected_sig_header(ee_cert, alg));
 
     // The unprotected signature header is empty.
     signature_item.push(CborType::Map(empty_map.clone()));
