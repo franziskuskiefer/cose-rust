@@ -58,11 +58,11 @@ struct SECItemMut<'a> {
 }
 
 impl<'a> SECItemMut<'a> {
-    /// Given a mutable reference to a Vec<u8> that has a particular allocated size, create a
+    /// Given a mutable reference to a Vec<u8> that has a particular allocated capacity, create a
     /// SECItemMut that points to the vec and has the same capacity.
     /// The input vec is not expected to have any actual contents, and in any case is cleared.
-    fn maybe_from_vec(vec: &'a mut Vec<u8>) -> Result<SECItemMut<'a>, NSSError> {
-        if vec.len() > u32::max_value() as usize {
+    fn maybe_from_empty_preallocated_vec(vec: &'a mut Vec<u8>) -> Result<SECItemMut<'a>, NSSError> {
+        if vec.capacity() > u32::max_value() as usize {
             return Err(NSSError::InputTooLarge);
         }
         vec.clear();
@@ -329,7 +329,7 @@ pub fn sign(
     {
         // Get a mutable SECItem on the preallocated signature buffer. PK11_SignWithMechanism will
         // fill the SECItem's buf with the bytes of the signature.
-        let mut signature_item = SECItemMut::maybe_from_vec(&mut signature)?;
+        let mut signature_item = SECItemMut::maybe_from_empty_preallocated_vec(&mut signature)?;
         let rv = unsafe {
             PK11_SignWithMechanism(key, mechanism, params_item, &mut signature_item, &hash_item)
         };
