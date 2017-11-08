@@ -1,6 +1,6 @@
 use std::slice;
 use cose::decoder::decode_signature;
-use cose::CoseSignatureType;
+use cose::SignatureAlgorithm;
 
 unsafe fn from_raw(ptr: *const u8, len: usize) -> Vec<u8> {
     slice::from_raw_parts(ptr, len).to_vec()
@@ -47,7 +47,7 @@ pub unsafe extern "C" fn verify_signature_with_cpp(
     let signature_type = &cose_signatures[0].signature_type;
     // ES256 = 0, ES384 = 1, ES521 = 2, PS256 = 3
     let signature_type = match *signature_type {
-        CoseSignatureType::ES256 => 0,
+        SignatureAlgorithm::ES256 => 0,
         _ => return false,
     };
     let signature_bytes = &cose_signatures[0].signature;
