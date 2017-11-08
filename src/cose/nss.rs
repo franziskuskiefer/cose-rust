@@ -5,15 +5,6 @@ use std::os::raw;
 use std::os::raw::c_char;
 use cose::SignatureAlgorithm;
 
-/// An enum identifying supported signature algorithms. Currently only ECDSA with SHA256 (ES256) and
-/// RSASSA-PSS with SHA-256 (PS256) are supported. Note that with PS256, the salt length is defined
-/// to be 32 bytes.
-#[derive(Debug)]
-pub enum SignatureAlgorithm {
-    ES256,
-    PS256,
-}
-
 type SECItemType = raw::c_uint; // TODO: actually an enum - is this the right size?
 const SI_BUFFER: SECItemType = 0; // called siBuffer in NSS
 
@@ -271,6 +262,7 @@ pub fn verify_signature(
     let rsa_pss_params_item = rsa_pss_params.get_params_item()?;
     let params_item = match *signature_algorithm {
         SignatureAlgorithm::ES256 => ptr::null(),
+        SignatureAlgorithm::ES384 => ptr::null(),
         SignatureAlgorithm::PS256 => &rsa_pss_params_item,
     };
     let null_cx_ptr: *const raw::c_void = ptr::null();
@@ -331,6 +323,7 @@ pub fn sign(
     let rsa_pss_params_item = rsa_pss_params.get_params_item()?;
     let params_item = match *signature_algorithm {
         SignatureAlgorithm::ES256 => ptr::null(),
+        SignatureAlgorithm::ES384 => ptr::null(),
         SignatureAlgorithm::PS256 => &rsa_pss_params_item,
     };
     let signature_len = unsafe { PK11_SignatureLen(key) };
