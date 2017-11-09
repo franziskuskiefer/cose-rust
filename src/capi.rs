@@ -8,7 +8,7 @@ unsafe fn from_raw(ptr: *const u8, len: usize) -> Vec<u8> {
 
 type VerifyCallback = extern "C" fn(*const u8, /* payload */
                                     usize, /* payload len */
-                                    *const*const u8, /* cert_chain */
+                                    *const *const u8, /* cert_chain */
                                     usize, /* # certs */
                                     *const usize, /* cert lengths in cert_chain */
                                     *const u8, /* signer cert */
@@ -60,8 +60,8 @@ pub unsafe extern "C" fn verify_signature_with_cpp(
         let real_payload = cose_signature.to_verify;
 
         // Build cert chain params.
-        let mut cert_lens:Vec<usize> = Vec::new();
-        let mut certs:Vec<*const u8> = Vec::new();
+        let mut cert_lens: Vec<usize> = Vec::new();
+        let mut certs: Vec<*const u8> = Vec::new();
         for cert in &cose_signature.certs {
             cert_lens.push(cert.len());
             certs.push(cert.as_ptr());
