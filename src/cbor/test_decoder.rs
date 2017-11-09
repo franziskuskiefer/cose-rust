@@ -396,3 +396,9 @@ fn test_too_large_input() {
     bytes.extend_from_slice(&array);
     test_decoder_error(bytes, CborError::InputTooLarge);
 }
+
+#[test]
+fn test_invalid_input() {
+  let bytes = vec![0xab, 0x65];
+  test_decoder_error(bytes, CborError::UnsupportedType);
+}
