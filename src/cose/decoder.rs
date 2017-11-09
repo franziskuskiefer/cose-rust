@@ -88,6 +88,8 @@ fn decode_signature_struct(
         CborType::SignedInteger(val) => {
             match val {
                 -7 => SignatureAlgorithm::ES256,
+                -35 => SignatureAlgorithm::ES384,
+                -36 => SignatureAlgorithm::ES521,
                 -37 => SignatureAlgorithm::PS256,
                 _ => return Err(CoseError::UnexpectedHeaderValue),
             }
