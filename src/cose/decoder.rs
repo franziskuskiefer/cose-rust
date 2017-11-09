@@ -11,7 +11,7 @@ pub struct CoseSignature {
     pub signature_type: SignatureAlgorithm,
     pub signature: Vec<u8>,
     pub signer_cert: Vec<u8>,
-    pub certs: Vec<u8>,
+    pub certs: Vec<Vec<u8>>,
     pub to_verify: Vec<u8>,
 }
 
@@ -102,16 +102,31 @@ fn decode_signature_struct(
     let signature_bytes = &cose_signature[2];
     let signature_bytes = unpack!(Bytes, signature_bytes).clone();
     let sig_structure_bytes = get_sig_struct_bytes(
-        protected_body_head,
+        protected_body_head.clone(),
         protected_signature_header_serialized.clone(),
         payload,
     );
+
+    // Read intermediate certificates from protected_body_head.
+    let protected_body_head = &protected_body_head;
+    let protected_body_head = unpack!(Bytes, protected_body_head);
+    let protected_body_head_map = match decode(protected_body_head.to_vec()) {
+        Ok(value) => value,
+        Err(_) => return Err(CoseError::DecodingFailure),
+    };
+    let intermediate_certs_array = &get_map_value(&protected_body_head_map, &CborType::Integer(4))?;
+    let intermediate_certs = unpack!(Array, intermediate_certs_array);
+    let mut certs: Vec<Vec<u8>> = Vec::new();
+    for cert in intermediate_certs {
+        let cert = unpack!(Bytes, cert);
+        certs.push(cert.clone());
+    }
 
     Ok(CoseSignature {
         signature_type: signature_algorithm,
         signature: signature_bytes,
         signer_cert: ee_cert,
-        certs: Vec::new(),
+        certs: certs,
         to_verify: sig_structure_bytes,
     })
 }

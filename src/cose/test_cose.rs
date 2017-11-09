@@ -10,6 +10,8 @@ fn test_cose_decode() {
     assert_eq!(cose_signatures.len(), 1);
     assert_eq!(cose_signatures[0].signature_type, SignatureAlgorithm::ES256);
     assert_eq!(cose_signatures[0].signature, test::SIGNATURE_BYTES.to_vec());
+    assert_eq!(cose_signatures[0].certs[0], test::P256_ROOT.to_vec());
+    assert_eq!(cose_signatures[0].certs[1], test::P256_INT.to_vec());
 }
 
 // All keys here are from pykey.py/pycert.py from mozilla-central.
