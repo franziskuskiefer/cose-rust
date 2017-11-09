@@ -399,6 +399,6 @@ fn test_too_large_input() {
 
 #[test]
 fn test_invalid_input() {
-  let bytes = vec![0xab, 0x65];
-  test_decoder_error(bytes, CborError::UnsupportedType);
+    let bytes = vec![0xab, 0x65];
+    test_decoder_error(bytes, CborError::UnsupportedType);
 }
