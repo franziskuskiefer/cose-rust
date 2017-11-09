@@ -68,7 +68,7 @@ pub fn get_sig_struct_bytes(
     return CborType::Array(sig_structure_array).serialize();
 }
 
-fn build_sig_struct(ee_cert: &[u8], alg: &SignatureAlgorithm, sig_bytes: &Vec<u8>) -> CborType {
+pub fn build_sig_struct(ee_cert: &[u8], alg: &SignatureAlgorithm, sig_bytes: &Vec<u8>) -> CborType {
     // Build the signature item.
     let mut signature_item: Vec<CborType> = Vec::new();
 

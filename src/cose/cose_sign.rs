@@ -11,6 +11,11 @@ pub fn sign(
     cert_chain: &[&[u8]],
     parameters: &Vec<SignatureParameters>,
 ) -> Result<Vec<u8>, CoseError> {
+    assert!(parameters.len() > 0);
+    if parameters.len() < 1 {
+        return Err(CoseError::InvalidArgument);
+    }
+
     let mut signatures: Vec<Signature> = Vec::new();
     for param in parameters {
         // Build the signature structure containing the protected headers and the
@@ -24,20 +29,22 @@ pub fn sign(
             payload,
         );
 
-        let signature = match nss::sign(&param.algorithm, &param.pkcs8, &payload) {
+        let signature_bytes = match nss::sign(&param.algorithm, &param.pkcs8, &payload) {
             Err(_) => return Err(CoseError::SigningFailed),
             Ok(signature) => signature,
         };
-        let sig = Signature {
+        let signature = Signature {
             parameter: param,
-            signature_bytes: signature,
+            signature_bytes: signature_bytes,
         };
-        signatures.push(sig);
+        signatures.push(signature);
     }
+
     assert!(signatures.len() > 0);
     if signatures.len() < 1 {
         return Err(CoseError::MalformedInput);
     }
+
     let cose_signature = build_cose_signature(cert_chain, &signatures);
     Ok(cose_signature)
 }

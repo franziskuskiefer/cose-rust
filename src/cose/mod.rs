@@ -32,6 +32,7 @@ pub enum CoseError {
     VerificationFailed,
     UnknownSignatureScheme,
     SigningFailed,
+    InvalidArgument,
 }
 
 #[derive(Debug)]
