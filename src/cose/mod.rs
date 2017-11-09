@@ -32,6 +32,31 @@ pub enum CoseError {
     VerificationFailed,
     UnknownSignatureScheme,
     SigningFailed,
+    InvalidArgument,
+}
+
+#[derive(Debug)]
+pub struct SignatureParameters<'a> {
+    certificate: &'a [u8],
+    algorithm: SignatureAlgorithm,
+    pkcs8: &'a [u8],
+}
+
+#[derive(Debug)]
+pub struct Signature<'a> {
+    parameter: &'a SignatureParameters<'a>,
+    signature_bytes: Vec<u8>,
+}
+
+/// An enum identifying supported signature algorithms. Currently only ECDSA with SHA256 (ES256) and
+/// RSASSA-PSS with SHA-256 (PS256) are supported. Note that with PS256, the salt length is defined
+/// to be 32 bytes.
+#[derive(Debug)]
+#[derive(PartialEq)]
+pub enum SignatureAlgorithm {
+    ES256,
+    PS256,
+    ES384,
 }
 
 /// Verify a COSE signature.
@@ -39,27 +64,26 @@ pub enum CoseError {
 pub fn verify_signature(payload: &[u8], cose_signature: Vec<u8>) -> Result<(), CoseError> {
     // Parse COSE signature.
     let cose_signatures = decode_signature(cose_signature, payload)?;
-    if cose_signatures.len() != 1 {
-        return Err(CoseError::LibraryFailure);
+    if cose_signatures.len() < 1 {
+        return Err(CoseError::MalformedInput);
     }
-    let signature_type = &cose_signatures[0].signature_type;
-    let signature_algorithm = match *signature_type {
-        CoseSignatureType::ES256 => nss::SignatureAlgorithm::ES256,
-        CoseSignatureType::PS256 => nss::SignatureAlgorithm::PS256,
-    };
-    let signature_bytes = &cose_signatures[0].signature;
-    let real_payload = &cose_signatures[0].to_verify;
 
-    // Verify the parsed signature.
-    // We ignore the certs field here because we don't verify the certificate.
-    let verify_result = nss::verify_signature(
-        &signature_algorithm,
-        &cose_signatures[0].signer_cert,
-        real_payload,
-        signature_bytes,
-    );
-    if !verify_result.is_ok() {
-        return Err(CoseError::VerificationFailed);
+    for signature in cose_signatures {
+        let signature_algorithm = &signature.signature_type;
+        let signature_bytes = &signature.signature;
+        let real_payload = &signature.to_verify;
+
+        // Verify the parsed signatures.
+        // We ignore the certs field here because we don't verify the certificate.
+        let verify_result = nss::verify_signature(
+            &signature_algorithm,
+            &signature.signer_cert,
+            real_payload,
+            signature_bytes,
+        );
+        if !verify_result.is_ok() {
+            return Err(CoseError::VerificationFailed);
+        }
     }
     Ok(())
 }

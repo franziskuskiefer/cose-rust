@@ -1,17 +1,9 @@
 use std::marker::PhantomData;
 use std::mem;
-use std::os::raw::c_char;
-use std::os::raw;
 use std::ptr;
-
-/// An enum identifying supported signature algorithms. Currently only ECDSA with SHA256 (ES256) and
-/// RSASSA-PSS with SHA-256 (PS256) are supported. Note that with PS256, the salt length is defined
-/// to be 32 bytes.
-#[derive(Debug)]
-pub enum SignatureAlgorithm {
-    ES256,
-    PS256,
-}
+use std::os::raw;
+use std::os::raw::c_char;
+use cose::SignatureAlgorithm;
 
 type SECItemType = raw::c_uint; // TODO: actually an enum - is this the right size?
 const SI_BUFFER: SECItemType = 0; // called siBuffer in NSS
@@ -102,10 +94,6 @@ impl CkRsaPkcsPssParams {
     }
 }
 
-// TODO: link to NSS source where these are defined
-type SECOidTag = raw::c_uint; // TODO: actually an enum - is this the right size?
-const SEC_OID_SHA256: SECOidTag = 191;
-
 type CkMechanismType = raw::c_ulong; // called CK_MECHANISM_TYPE in NSS
 const CKM_ECDSA: CkMechanismType = 0x0000_1041;
 const CKM_RSA_PKCS_PSS: CkMechanismType = 0x0000_000D;
@@ -125,12 +113,13 @@ enum CERTCertificate {}
 enum CERTCertDBHandle {}
 
 const SHA256_LENGTH: usize = 32;
+const SHA384_LENGTH: usize = 48;
 
 // TODO: ugh this will probably have a platform-specific name...
 #[link(name = "nss3")]
 extern "C" {
     fn PK11_HashBuf(
-        hashAlg: SECOidTag,
+        hashAlg: HashAlgorithm,
         out: *mut u8,
         data_in: *const u8, // called "in" in NSS
         len: raw::c_int,
@@ -192,15 +181,27 @@ pub enum NSSError {
     ExtractPublicKeyFailed,
 }
 
-// XXX: make this work with other hashe algos.
-fn hash(payload: &[u8]) -> Result<Vec<u8>, NSSError> {
+// https://searchfox.org/nss/rev/990c2e793aa731cd66238c6c4f00b9473943bc66/lib/util/secoidt.h#274
+#[derive(Debug, PartialEq, Clone)]
+#[repr(C)]
+enum HashAlgorithm {
+    SHA256 = 191,
+    SHA384 = 192,
+}
+
+fn hash(payload: &[u8], signature_algorithm: &SignatureAlgorithm) -> Result<Vec<u8>, NSSError> {
     if payload.len() > raw::c_int::max_value() as usize {
         return Err(NSSError::InputTooLarge);
     }
-    let mut hash_buf = vec![0; SHA256_LENGTH];
+    let (hash_algorithm, digest_length) = match *signature_algorithm {
+        SignatureAlgorithm::ES256 => (HashAlgorithm::SHA256, SHA256_LENGTH),
+        SignatureAlgorithm::ES384 => (HashAlgorithm::SHA384, SHA384_LENGTH),
+        SignatureAlgorithm::PS256 => (HashAlgorithm::SHA256, SHA256_LENGTH),
+    };
+    let mut hash_buf = vec![0; digest_length];
     let len: raw::c_int = payload.len() as raw::c_int;
     let hash_result =
-        unsafe { PK11_HashBuf(SEC_OID_SHA256, hash_buf.as_mut_ptr(), payload.as_ptr(), len) };
+        unsafe { PK11_HashBuf(hash_algorithm, hash_buf.as_mut_ptr(), payload.as_ptr(), len) };
     if hash_result != SEC_SUCCESS {
         return Err(NSSError::LibraryFailure);
     }
@@ -225,7 +226,7 @@ pub fn verify_signature(
         PK11_FreeSlot(slot);
     });
 
-    let hash_buf = hash(payload).unwrap();
+    let hash_buf = hash(payload, signature_algorithm).unwrap();
     let hash_item = SECItem::maybe_new(hash_buf.as_slice())?;
 
     // Import DER cert into NSS.
@@ -254,12 +255,14 @@ pub fn verify_signature(
     let signature_item = SECItem::maybe_new(signature)?;
     let mechanism = match *signature_algorithm {
         SignatureAlgorithm::ES256 => CKM_ECDSA,
+        SignatureAlgorithm::ES384 => CKM_ECDSA,
         SignatureAlgorithm::PS256 => CKM_RSA_PKCS_PSS,
     };
     let rsa_pss_params = CkRsaPkcsPssParams::new();
     let rsa_pss_params_item = rsa_pss_params.get_params_item()?;
     let params_item = match *signature_algorithm {
         SignatureAlgorithm::ES256 => ptr::null(),
+        SignatureAlgorithm::ES384 => ptr::null(),
         SignatureAlgorithm::PS256 => &rsa_pss_params_item,
     };
     let null_cx_ptr: *const raw::c_void = ptr::null();
@@ -313,18 +316,20 @@ pub fn sign(
     }
     let mechanism = match *signature_algorithm {
         SignatureAlgorithm::ES256 => CKM_ECDSA,
+        SignatureAlgorithm::ES384 => CKM_ECDSA,
         SignatureAlgorithm::PS256 => CKM_RSA_PKCS_PSS,
     };
     let rsa_pss_params = CkRsaPkcsPssParams::new();
     let rsa_pss_params_item = rsa_pss_params.get_params_item()?;
     let params_item = match *signature_algorithm {
         SignatureAlgorithm::ES256 => ptr::null(),
+        SignatureAlgorithm::ES384 => ptr::null(),
         SignatureAlgorithm::PS256 => &rsa_pss_params_item,
     };
     let signature_len = unsafe { PK11_SignatureLen(key) };
     // Allocate enough space for the signature.
     let mut signature: Vec<u8> = Vec::with_capacity(signature_len);
-    let hash_buf = hash(payload).unwrap();
+    let hash_buf = hash(payload, signature_algorithm).unwrap();
     let hash_item = SECItem::maybe_new(hash_buf.as_slice())?;
     {
         // Get a mutable SECItem on the preallocated signature buffer. PK11_SignWithMechanism will

@@ -2,22 +2,16 @@ use cbor::decoder::*;
 use cbor::CborType;
 use cose::CoseError;
 use cose::util::get_sig_struct_bytes;
+use cose::SignatureAlgorithm;
 
 const COSE_SIGN_TAG: u64 = 98;
 
 #[derive(Debug)]
-#[derive(PartialEq)]
-pub enum CoseSignatureType {
-    ES256,
-    PS256,
-}
-
-#[derive(Debug)]
 pub struct CoseSignature {
-    pub signature_type: CoseSignatureType,
+    pub signature_type: SignatureAlgorithm,
     pub signature: Vec<u8>,
     pub signer_cert: Vec<u8>,
-    pub certs: Vec<u8>,
+    pub certs: Vec<Vec<u8>>,
     pub to_verify: Vec<u8>,
 }
 
@@ -44,17 +38,6 @@ fn get_map_value(map: &CborType, key: &CborType) -> Result<CborType, CoseError> 
     }
 }
 
-/// `COSE_Sign` = [
-///     Headers,
-///     payload : bstr / nil,
-///     signatures : [+ `COSE_Signature`]
-/// ]
-///
-/// Headers = (
-///     protected : `empty_or_serialized_map`,
-///     unprotected : `header_map`
-/// )
-///
 /// This syntax is a little unintuitive. Taken together, the two previous definitions essentially
 /// mean:
 ///
@@ -82,6 +65,84 @@ fn get_map_value(map: &CborType, key: &CborType) -> Result<CborType, CoseError> 
 ///     unprotected : `header_map`
 ///     signature : bstr
 /// ]
+fn decode_signature_struct(
+    cose_signature: &CborType,
+    payload: &[u8],
+    protected_body_head: CborType,
+) -> Result<CoseSignature, CoseError> {
+    let cose_signature = unpack!(Array, cose_signature);
+    if cose_signature.len() != 3 {
+        return Err(CoseError::MalformedInput);
+    }
+    let protected_signature_header_serialized = &cose_signature[0];
+    let protected_signature_header_bytes = unpack!(Bytes, protected_signature_header_serialized)
+        .clone();
+
+    // Parse the protected signature header.
+    let protected_signature_header = match decode(protected_signature_header_bytes.clone()) {
+        Err(_) => return Err(CoseError::DecodingFailure),
+        Ok(value) => value,
+    };
+    let signature_algorithm = get_map_value(&protected_signature_header, &CborType::Integer(1))?;
+    let signature_algorithm = match signature_algorithm {
+        CborType::SignedInteger(val) => {
+            match val {
+                -7 => SignatureAlgorithm::ES256,
+                -37 => SignatureAlgorithm::PS256,
+                _ => return Err(CoseError::UnexpectedHeaderValue),
+            }
+        }
+        _ => return Err(CoseError::UnexpectedType),
+    };
+
+    let ee_cert = &get_map_value(&protected_signature_header, &CborType::Integer(4))?;
+    let ee_cert = unpack!(Bytes, ee_cert).clone();
+
+    // Build signature structure to verify.
+    let signature_bytes = &cose_signature[2];
+    let signature_bytes = unpack!(Bytes, signature_bytes).clone();
+    let sig_structure_bytes = get_sig_struct_bytes(
+        protected_body_head.clone(),
+        protected_signature_header_serialized.clone(),
+        payload,
+    );
+
+    // Read intermediate certificates from protected_body_head.
+    let protected_body_head = &protected_body_head;
+    let protected_body_head = unpack!(Bytes, protected_body_head);
+    let protected_body_head_map = match decode(protected_body_head.to_vec()) {
+        Ok(value) => value,
+        Err(_) => return Err(CoseError::DecodingFailure),
+    };
+    let intermediate_certs_array = &get_map_value(&protected_body_head_map, &CborType::Integer(4))?;
+    let intermediate_certs = unpack!(Array, intermediate_certs_array);
+    let mut certs: Vec<Vec<u8>> = Vec::new();
+    for cert in intermediate_certs {
+        let cert = unpack!(Bytes, cert);
+        certs.push(cert.clone());
+    }
+
+    Ok(CoseSignature {
+        signature_type: signature_algorithm,
+        signature: signature_bytes,
+        signer_cert: ee_cert,
+        certs: certs,
+        to_verify: sig_structure_bytes,
+    })
+}
+
+/// `COSE_Sign` = [
+///     Headers,
+///     payload : bstr / nil,
+///     signatures : [+ `COSE_Signature`]
+/// ]
+///
+/// Headers = (
+///     protected : `empty_or_serialized_map`,
+///     unprotected : `header_map`
+/// )
+///
+/// See `decode_signature_struct` for description of `COSE_Signature`.
 pub fn decode_signature(bytes: Vec<u8>, payload: &[u8]) -> Result<Vec<CoseSignature>, CoseError> {
     // This has to be a COSE_Sign object, which is a tagged array.
     let tagged_cose_sign = match decode(bytes) {
@@ -106,57 +167,18 @@ pub fn decode_signature(bytes: Vec<u8>, payload: &[u8]) -> Result<Vec<CoseSignat
     let signatures = &cose_sign_array[3];
     let signatures = unpack!(Array, signatures);
 
-    // Take the first signature.
-    // TODO #15: support more than 1 signature.
+    // Decode COSE_Signatures.
+    // There has to be at least one signature to make this a valid COSE signature.
     if signatures.len() < 1 {
         return Err(CoseError::MalformedInput);
     }
-    let cose_signature = &signatures[0];
-    let cose_signature = unpack!(Array, cose_signature);
-    if cose_signature.len() != 3 {
-        return Err(CoseError::MalformedInput);
-    }
-    let protected_signature_header_serialized = &cose_signature[0];
-    let protected_signature_header_bytes = unpack!(Bytes, protected_signature_header_serialized)
-        .clone();
-
-    // Parse the protected signature header.
-    let protected_signature_header = match decode(protected_signature_header_bytes.clone()) {
-        Err(_) => return Err(CoseError::DecodingFailure),
-        Ok(value) => value,
-    };
-    let signature_algorithm = get_map_value(&protected_signature_header, &CborType::Integer(1))?;
-    let signature_algorithm = match signature_algorithm {
-        CborType::SignedInteger(val) => {
-            match val {
-                -7 => CoseSignatureType::ES256,
-                -37 => CoseSignatureType::PS256,
-                _ => return Err(CoseError::UnexpectedHeaderValue),
-            }
-        }
-        _ => return Err(CoseError::UnexpectedType),
-    };
-
-    let ee_cert = &get_map_value(&protected_signature_header, &CborType::Integer(4))?;
-    let ee_cert = unpack!(Bytes, ee_cert).clone();
-
-    // Build signature structure to verify.
-    let signature_bytes = &cose_signature[2];
-    let signature_bytes = unpack!(Bytes, signature_bytes).clone();
-    let sig_structure_bytes = get_sig_struct_bytes(
-        cose_sign_array[0].clone(), // Protected body header.
-        protected_signature_header_serialized.clone(),
-        payload,
-    );
-
-    let signature = CoseSignature {
-        signature_type: signature_algorithm,
-        signature: signature_bytes,
-        signer_cert: ee_cert,
-        certs: Vec::new(),
-        to_verify: sig_structure_bytes,
-    };
     let mut result = Vec::new();
-    result.push(signature);
+    for cose_signature in signatures {
+        // cose_sign_array holds the protected body header.
+        let signature =
+            decode_signature_struct(cose_signature, payload, cose_sign_array[0].clone())?;
+        result.push(signature);
+    }
+
     Ok(result)
 }
