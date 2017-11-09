@@ -1,17 +1,9 @@
-use std::slice;
+use std::marker::PhantomData;
 use std::mem;
 use std::ptr;
 use std::os::raw;
 use std::os::raw::c_char;
-
-/// An enum identifying supported signature algorithms. Currently only ECDSA with SHA256 (ES256) and
-/// RSASSA-PSS with SHA-256 (PS256) are supported. Note that with PS256, the salt length is defined
-/// to be 32 bytes.
-#[derive(Debug)]
-pub enum SignatureAlgorithm {
-    ES256,
-    PS256, // TODO #29:We need a cert for this so we can test it.
-}
+use cose::SignatureAlgorithm;
 
 type SECItemType = raw::c_uint; // TODO: actually an enum - is this the right size?
 const SI_BUFFER: SECItemType = 0; // called siBuffer in NSS
@@ -19,7 +11,7 @@ const SI_BUFFER: SECItemType = 0; // called siBuffer in NSS
 #[repr(C)]
 struct SECItem {
     typ: SECItemType,
-    data: *const u8, // ugh it's not really const...
+    data: *const u8,
     len: raw::c_uint,
 }
 
@@ -32,6 +24,45 @@ impl SECItem {
             typ: SI_BUFFER,
             data: data.as_ptr(),
             len: data.len() as u32,
+        })
+    }
+
+    fn maybe_from_parts(data: *const u8, len: usize) -> Result<SECItem, NSSError> {
+        if len > u32::max_value() as usize {
+            return Err(NSSError::InputTooLarge);
+        }
+        Ok(SECItem {
+            typ: SI_BUFFER,
+            data: data,
+            len: len as u32,
+        })
+    }
+}
+
+/// Many NSS APIs take constant data input as SECItems. Some, however, output data as SECItems.
+/// To represent this, we define another type of mutable SECItem.
+#[repr(C)]
+struct SECItemMut<'a> {
+    typ: SECItemType,
+    data: *mut u8,
+    len: raw::c_uint,
+    _marker: PhantomData<&'a mut Vec<u8>>,
+}
+
+impl<'a> SECItemMut<'a> {
+    /// Given a mutable reference to a Vec<u8> that has a particular allocated capacity, create a
+    /// SECItemMut that points to the vec and has the same capacity.
+    /// The input vec is not expected to have any actual contents, and in any case is cleared.
+    fn maybe_from_empty_preallocated_vec(vec: &'a mut Vec<u8>) -> Result<SECItemMut<'a>, NSSError> {
+        if vec.capacity() > u32::max_value() as usize {
+            return Err(NSSError::InputTooLarge);
+        }
+        vec.clear();
+        Ok(SECItemMut {
+            typ: SI_BUFFER,
+            data: vec.as_mut_ptr(),
+            len: vec.capacity() as u32,
+            _marker: PhantomData,
         })
     }
 }
@@ -52,11 +83,16 @@ impl CkRsaPkcsPssParams {
             s_len: 32,
         }
     }
-}
 
-// TODO: link to NSS source where these are defined
-type SECOidTag = raw::c_uint; // TODO: actually an enum - is this the right size?
-const SEC_OID_SHA256: SECOidTag = 191;
+    fn get_params_item(&self) -> Result<SECItem, NSSError> {
+        // This isn't entirely NSS' fault, but it mostly is.
+        let params_ptr: *const CkRsaPkcsPssParams = self;
+        let params_ptr: *const u8 = params_ptr as *const u8;
+        let params_secitem =
+            SECItem::maybe_from_parts(params_ptr, mem::size_of::<CkRsaPkcsPssParams>())?;
+        Ok(params_secitem)
+    }
+}
 
 type CkMechanismType = raw::c_ulong; // called CK_MECHANISM_TYPE in NSS
 const CKM_ECDSA: CkMechanismType = 0x0000_1041;
@@ -77,12 +113,13 @@ enum CERTCertificate {}
 enum CERTCertDBHandle {}
 
 const SHA256_LENGTH: usize = 32;
+const SHA384_LENGTH: usize = 48;
 
 // TODO: ugh this will probably have a platform-specific name...
 #[link(name = "nss3")]
 extern "C" {
     fn PK11_HashBuf(
-        hashAlg: SECOidTag,
+        hashAlg: HashAlgorithm,
         out: *mut u8,
         data_in: *const u8, // called "in" in NSS
         len: raw::c_int,
@@ -127,7 +164,7 @@ extern "C" {
         key: *const SECKEYPrivateKey,
         mech: CkMechanismType,
         param: *const SECItem,
-        sig: *mut SECItem,
+        sig: *mut SECItemMut,
         hash: *const SECItem,
     ) -> SECStatus;
 }
@@ -141,19 +178,30 @@ pub enum NSSError {
     LibraryFailure,
     SignatureVerificationFailed,
     SigningFailed,
-    Unimplemented,
     ExtractPublicKeyFailed,
 }
 
-// XXX: make this work with other hashe algos.
-fn hash(payload: &[u8]) -> Result<Vec<u8>, NSSError> {
+// https://searchfox.org/nss/rev/990c2e793aa731cd66238c6c4f00b9473943bc66/lib/util/secoidt.h#274
+#[derive(Debug, PartialEq, Clone)]
+#[repr(C)]
+enum HashAlgorithm {
+    SHA256 = 191,
+    SHA384 = 192,
+}
+
+fn hash(payload: &[u8], signature_algorithm: &SignatureAlgorithm) -> Result<Vec<u8>, NSSError> {
     if payload.len() > raw::c_int::max_value() as usize {
         return Err(NSSError::InputTooLarge);
     }
-    let mut hash_buf = vec![0; SHA256_LENGTH];
+    let (hash_algorithm, digest_length) = match *signature_algorithm {
+        SignatureAlgorithm::ES256 => (HashAlgorithm::SHA256, SHA256_LENGTH),
+        SignatureAlgorithm::ES384 => (HashAlgorithm::SHA384, SHA384_LENGTH),
+        SignatureAlgorithm::PS256 => (HashAlgorithm::SHA256, SHA256_LENGTH),
+    };
+    let mut hash_buf = vec![0; digest_length];
     let len: raw::c_int = payload.len() as raw::c_int;
     let hash_result =
-        unsafe { PK11_HashBuf(SEC_OID_SHA256, hash_buf.as_mut_ptr(), payload.as_ptr(), len) };
+        unsafe { PK11_HashBuf(hash_algorithm, hash_buf.as_mut_ptr(), payload.as_ptr(), len) };
     if hash_result != SEC_SUCCESS {
         return Err(NSSError::LibraryFailure);
     }
@@ -178,7 +226,7 @@ pub fn verify_signature(
         PK11_FreeSlot(slot);
     });
 
-    let hash_buf = hash(payload).unwrap();
+    let hash_buf = hash(payload, signature_algorithm).unwrap();
     let hash_item = SECItem::maybe_new(hash_buf.as_slice())?;
 
     // Import DER cert into NSS.
@@ -207,18 +255,15 @@ pub fn verify_signature(
     let signature_item = SECItem::maybe_new(signature)?;
     let mechanism = match *signature_algorithm {
         SignatureAlgorithm::ES256 => CKM_ECDSA,
+        SignatureAlgorithm::ES384 => CKM_ECDSA,
         SignatureAlgorithm::PS256 => CKM_RSA_PKCS_PSS,
     };
     let rsa_pss_params = CkRsaPkcsPssParams::new();
-    // This isn't entirely NSS' fault, but it mostly is.
-    let rsa_pss_params_ptr: *const CkRsaPkcsPssParams = &rsa_pss_params;
-    let rsa_pss_params_ptr: *const u8 = rsa_pss_params_ptr as *const u8;
-    let rsa_pss_params_bytes =
-        unsafe { slice::from_raw_parts(rsa_pss_params_ptr, mem::size_of::<CkRsaPkcsPssParams>()) };
-    let rsa_pss_params_secitem = SECItem::maybe_new(rsa_pss_params_bytes)?;
-    let params_item: *const SECItem = match *signature_algorithm {
+    let rsa_pss_params_item = rsa_pss_params.get_params_item()?;
+    let params_item = match *signature_algorithm {
         SignatureAlgorithm::ES256 => ptr::null(),
-        SignatureAlgorithm::PS256 => &rsa_pss_params_secitem,
+        SignatureAlgorithm::ES384 => ptr::null(),
+        SignatureAlgorithm::PS256 => &rsa_pss_params_item,
     };
     let null_cx_ptr: *const raw::c_void = ptr::null();
     let result = unsafe {
@@ -243,10 +288,6 @@ pub fn sign(
     pk8: &[u8],
     payload: &[u8],
 ) -> Result<Vec<u8>, NSSError> {
-    match *signature_algorithm {
-        SignatureAlgorithm::ES256 => {}
-        SignatureAlgorithm::PS256 => return Err(NSSError::Unimplemented),
-    };
     let slot = unsafe { PK11_GetInternalSlot() };
     if slot.is_null() {
         return Err(NSSError::LibraryFailure);
@@ -271,25 +312,39 @@ pub fn sign(
         )
     };
     if rv != SEC_SUCCESS || key.is_null() {
-        println!("Decoding the PKCS8 failed.");
         return Err(NSSError::DecodingPKCS8Failed);
     }
-    let hash_buf = hash(payload).unwrap();
-    let hash_item = SECItem::maybe_new(hash_buf.as_slice())?;
-    let signature_len = unsafe { PK11_SignatureLen(key) };
-    let mut signature: Vec<u8> = Vec::with_capacity(signature_len);
-    // XXX: rewrite without unsafe.
-    unsafe {
-        signature.set_len(signature_len);
-    }
-    let mut signature_item = SECItem::maybe_new(signature.as_slice())?;
-    let rv = unsafe {
-        PK11_SignWithMechanism(key, CKM_ECDSA, ptr::null(), &mut signature_item, &hash_item)
+    let mechanism = match *signature_algorithm {
+        SignatureAlgorithm::ES256 => CKM_ECDSA,
+        SignatureAlgorithm::ES384 => CKM_ECDSA,
+        SignatureAlgorithm::PS256 => CKM_RSA_PKCS_PSS,
     };
-
-    if rv != SEC_SUCCESS || signature_item.len != signature_len as u32 {
-        println!("Signing failed.");
-        return Err(NSSError::SigningFailed);
+    let rsa_pss_params = CkRsaPkcsPssParams::new();
+    let rsa_pss_params_item = rsa_pss_params.get_params_item()?;
+    let params_item = match *signature_algorithm {
+        SignatureAlgorithm::ES256 => ptr::null(),
+        SignatureAlgorithm::ES384 => ptr::null(),
+        SignatureAlgorithm::PS256 => &rsa_pss_params_item,
+    };
+    let signature_len = unsafe { PK11_SignatureLen(key) };
+    // Allocate enough space for the signature.
+    let mut signature: Vec<u8> = Vec::with_capacity(signature_len);
+    let hash_buf = hash(payload, signature_algorithm).unwrap();
+    let hash_item = SECItem::maybe_new(hash_buf.as_slice())?;
+    {
+        // Get a mutable SECItem on the preallocated signature buffer. PK11_SignWithMechanism will
+        // fill the SECItem's buf with the bytes of the signature.
+        let mut signature_item = SECItemMut::maybe_from_empty_preallocated_vec(&mut signature)?;
+        let rv = unsafe {
+            PK11_SignWithMechanism(key, mechanism, params_item, &mut signature_item, &hash_item)
+        };
+        if rv != SEC_SUCCESS || signature_item.len as usize != signature_len {
+            return Err(NSSError::SigningFailed);
+        }
+    }
+    unsafe {
+        // Now that the bytes of the signature have been filled out, set its length.
+        signature.set_len(signature_len);
     }
     Ok(signature)
 }
