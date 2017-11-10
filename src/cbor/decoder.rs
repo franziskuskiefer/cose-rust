@@ -139,7 +139,7 @@ impl DecoderCursor {
                 CborType::Tag(tag, Box::new(item))
             }
             7 => self.read_null()?,
-            _ => unreachable!(),
+            _ => return Err(CborError::UnsupportedType),
         };
         Ok(result)
     }
