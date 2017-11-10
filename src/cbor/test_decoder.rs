@@ -397,8 +397,9 @@ fn test_too_large_input() {
     test_decoder_error(bytes, CborError::InputTooLarge);
 }
 
+// We currently don't support CBOR strings (issue #39).
 #[test]
 fn test_invalid_input() {
-    let bytes = vec![0xab, 0x65];
+    let bytes = vec![0x60];
     test_decoder_error(bytes, CborError::UnsupportedType);
 }
