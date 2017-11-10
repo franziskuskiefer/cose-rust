@@ -53,9 +53,9 @@ pub struct Signature<'a> {
 #[derive(PartialEq)]
 pub enum SignatureAlgorithm {
     ES256,
-    PS256,
     ES384,
-    ES512,
+    ES521,
+    PS256,
 }
 
 /// Verify a COSE signature.

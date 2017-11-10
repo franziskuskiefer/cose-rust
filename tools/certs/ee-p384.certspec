@@ -1,6 +1,6 @@
 issuer:int-p256
-subject:ee-p256
-issuerKey:secp256r1
+subject:ee-p384
+issuerKey:secp384r1
 subjectKey:secp384r1
 signature:ecdsaWithSHA384
 validity:3650
