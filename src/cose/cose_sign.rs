@@ -2,7 +2,7 @@
 /// This module implements basic COSE signing.
 use cose::nss;
 use cose::CoseError;
-use cose::{Signature, SignatureParameters, SignatureAlgorithm};
+use cose::{Signature, SignatureAlgorithm, SignatureParameters};
 use std::collections::BTreeMap;
 use cbor::CborType;
 use cose::util::get_sig_struct_bytes;
