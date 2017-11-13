@@ -15,6 +15,7 @@ clippy = {version = "*", optional = true}
 [lib]
 name = "cose"
 path = "src/lib.rs"
+crate-type = ["dylib"]
 
 [features]
 default = []
