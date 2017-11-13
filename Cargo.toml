@@ -1,6 +1,6 @@
 [package]
 name = "cose"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Franziskus Kiefer <franziskuskiefer@gmail.com>", "David Keeler <dkeeler@mozilla.com>"]
 description = "Library to use COSE (https://tools.ietf.org/html/rfc8152) in Rust"
 repository = "https://github.com/franziskuskiefer/cose-rust"
@@ -8,9 +8,9 @@ keywords = ["cose", "jose", "cbor"]
 license = "MPL-2.0"
 build = "build.rs"
 
-[dependencies]
+[dev-dependencies]
 scopeguard = "0.3"
-clippy = {version = "*", optional = true}
+# clippy = {version = "*"}
 
 [lib]
 name = "cose"
