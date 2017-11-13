@@ -10,7 +10,9 @@ build = "build.rs"
 
 [dev-dependencies]
 scopeguard = "0.3"
-# clippy = {version = "*"}
+
+[dependencies]
+# clippy = {version = "*", optional = true}
 
 [lib]
 name = "cose"

@@ -1,6 +1,5 @@
 use std::marker::PhantomData;
-use std::mem;
-use std::ptr;
+use std::{mem, ptr};
 use std::os::raw;
 use std::os::raw::c_char;
 use SignatureAlgorithm;

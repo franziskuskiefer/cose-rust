@@ -1,10 +1,9 @@
 //! Parse and decode COSE signatures.
 
-use cbor::decoder::*;
 use cbor::CborType;
-use CoseError;
+use cbor::decoder::decode;
+use {CoseError, SignatureAlgorithm};
 use util::get_sig_struct_bytes;
-use SignatureAlgorithm;
 
 const COSE_SIGN_TAG: u64 = 98;
 
@@ -71,7 +70,7 @@ fn get_map_value(map: &CborType, key: &CborType) -> Result<CborType, CoseError> 
 fn decode_signature_struct(
     cose_signature: &CborType,
     payload: &[u8],
-    protected_body_head: CborType,
+    protected_body_head: &CborType,
 ) -> Result<CoseSignature, CoseError> {
     let cose_signature = unpack!(Array, cose_signature);
     if cose_signature.len() != 3 {
@@ -113,7 +112,6 @@ fn decode_signature_struct(
     );
 
     // Read intermediate certificates from protected_body_head.
-    let protected_body_head = &protected_body_head;
     let protected_body_head = unpack!(Bytes, protected_body_head);
     let protected_body_head_map = match decode(protected_body_head.to_vec()) {
         Ok(value) => value,
@@ -183,7 +181,7 @@ pub fn decode_signature(bytes: Vec<u8>, payload: &[u8]) -> Result<Vec<CoseSignat
     for cose_signature in signatures {
         // cose_sign_array holds the protected body header.
         let signature =
-            decode_signature_struct(cose_signature, payload, cose_sign_array[0].clone())?;
+            decode_signature_struct(cose_signature, payload, &cose_sign_array[0].clone())?;
         result.push(signature);
     }
 
