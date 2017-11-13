@@ -30,14 +30,14 @@ const P384_PARAMS: SignatureParameters = SignatureParameters {
 };
 const P521_PARAMS: SignatureParameters = SignatureParameters {
     certificate: &test::P521_EE,
-    algorithm: SignatureAlgorithm::ES521,
+    algorithm: SignatureAlgorithm::ES512,
     pkcs8: &test::PKCS8_P521_EE,
 };
 
 #[cfg(test)]
 fn test_verify(payload: &[u8], cert_chain: &[&[u8]], params_vec: Vec<SignatureParameters>) {
     test::setup();
-    let cose_signature = sign(payload, &cert_chain, &params_vec);
+    let cose_signature = sign(payload, cert_chain, &params_vec);
     assert!(cose_signature.is_ok());
     let cose_signature = cose_signature.unwrap();
 
@@ -52,7 +52,7 @@ fn test_verify_modified_payload(
     params_vec: Vec<SignatureParameters>,
 ) {
     test::setup();
-    let cose_signature = sign(payload, &cert_chain, &params_vec);
+    let cose_signature = sign(payload, cert_chain, &params_vec);
     assert!(cose_signature.is_ok());
     let cose_signature = cose_signature.unwrap();
 
@@ -70,12 +70,13 @@ fn test_verify_modified_signature(
     params_vec: Vec<SignatureParameters>,
 ) {
     test::setup();
-    let cose_signature = sign(payload, &cert_chain, &params_vec);
+    let cose_signature = sign(payload, cert_chain, &params_vec);
     assert!(cose_signature.is_ok());
     let mut cose_signature = cose_signature.unwrap();
 
     // Tamper with the cose signature.
-    cose_signature[15] = cose_signature[15] ^ cose_signature[15];
+    let len = cose_signature.len();
+    cose_signature[len - 15] = !cose_signature[len - 15];
 
     // Verify signature.
     let verify_result = verify_signature(payload, cose_signature);
@@ -83,6 +84,8 @@ fn test_verify_modified_signature(
     assert_eq!(verify_result, Err(CoseError::VerificationFailed));
 }
 
+// This can be used with inconsistent parameters that make the verification fail.
+// In particular, the signing key does not match the certificate used to verify.
 #[cfg(test)]
 fn test_verify_verification_fails(
     payload: &[u8],
@@ -90,7 +93,7 @@ fn test_verify_verification_fails(
     params_vec: Vec<SignatureParameters>,
 ) {
     test::setup();
-    let cose_signature = sign(payload, &cert_chain, &params_vec);
+    let cose_signature = sign(payload, cert_chain, &params_vec);
     assert!(cose_signature.is_ok());
     let cose_signature = cose_signature.unwrap();
 

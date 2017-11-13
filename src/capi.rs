@@ -53,7 +53,7 @@ pub unsafe extern "C" fn verify_signature_with_cpp(
         let signature_type = match signature_type {
             SignatureAlgorithm::ES256 => 0,
             SignatureAlgorithm::ES384 => 1,
-            SignatureAlgorithm::ES521 => 2,
+            SignatureAlgorithm::ES512 => 2,
             SignatureAlgorithm::PS256 => 3,
         };
         let signature_bytes = cose_signature.signature;
