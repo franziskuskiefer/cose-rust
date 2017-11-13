@@ -1,8 +1,6 @@
 use test_setup as test;
 use util_test::{sign, verify_signature};
-use SignatureAlgorithm;
-use SignatureParameters;
-use CoseError;
+use {CoseError, SignatureAlgorithm, SignatureParameters};
 use std::str::FromStr;
 use decoder::decode_signature;
 
