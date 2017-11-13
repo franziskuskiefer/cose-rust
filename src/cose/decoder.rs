@@ -89,7 +89,7 @@ fn decode_signature_struct(
             match val {
                 -7 => SignatureAlgorithm::ES256,
                 -35 => SignatureAlgorithm::ES384,
-                -36 => SignatureAlgorithm::ES521,
+                -36 => SignatureAlgorithm::ES512,
                 -37 => SignatureAlgorithm::PS256,
                 _ => return Err(CoseError::UnexpectedHeaderValue),
             }

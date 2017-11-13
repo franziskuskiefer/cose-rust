@@ -56,7 +56,7 @@ pub struct Signature<'a> {
 pub enum SignatureAlgorithm {
     ES256,
     ES384,
-    ES521,
+    ES512,
     PS256,
 }
 
