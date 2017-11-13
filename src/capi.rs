@@ -19,7 +19,7 @@ type VerifyCallback = extern "C" fn(*const u8, /* payload */
                                     -> bool;
 
 #[no_mangle]
-pub unsafe extern "C" fn verify_signature_with_cpp(
+pub extern "C" fn verify_signature_ffi(
     payload: *const u8,
     payload_len: usize,
     cose_signature: *const u8,
@@ -33,8 +33,8 @@ pub unsafe extern "C" fn verify_signature_with_cpp(
     }
 
     // Build Rust variables from C parameters.
-    let payload = from_raw(payload, payload_len);
-    let cose_signature = from_raw(cose_signature, cose_signature_len);
+    let payload = unsafe { from_raw(payload, payload_len) };
+    let cose_signature = unsafe { from_raw(cose_signature, cose_signature_len) };
 
     // Parse the incoming signature.
     let cose_signatures = decode_signature(cose_signature, &payload);
@@ -49,7 +49,7 @@ pub unsafe extern "C" fn verify_signature_with_cpp(
     let mut result = true;
     for cose_signature in cose_signatures {
         let signature_type = cose_signature.signature_type;
-        // ES256 = 0, ES384 = 1, ES521 = 2, PS256 = 3
+        // ES256 = 0, ES384 = 1, ES512 = 2, PS256 = 3
         let signature_type = match signature_type {
             SignatureAlgorithm::ES256 => 0,
             SignatureAlgorithm::ES384 => 1,
@@ -72,7 +72,7 @@ pub unsafe extern "C" fn verify_signature_with_cpp(
             real_payload.as_ptr(),
             real_payload.len(),
             certs.as_ptr(),
-            cose_signature.certs.len(),
+            certs.len(),
             cert_lens.as_ptr(),
             cose_signature.signer_cert.as_ptr(),
             cose_signature.signer_cert.len(),
