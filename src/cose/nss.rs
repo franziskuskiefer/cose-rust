@@ -114,6 +114,7 @@ enum CERTCertDBHandle {}
 
 const SHA256_LENGTH: usize = 32;
 const SHA384_LENGTH: usize = 48;
+const SHA512_LENGTH: usize = 64;
 
 // TODO: ugh this will probably have a platform-specific name...
 #[link(name = "nss3")]
@@ -187,6 +188,7 @@ pub enum NSSError {
 enum HashAlgorithm {
     SHA256 = 191,
     SHA384 = 192,
+    SHA512 = 193,
 }
 
 fn hash(payload: &[u8], signature_algorithm: &SignatureAlgorithm) -> Result<Vec<u8>, NSSError> {
@@ -196,6 +198,7 @@ fn hash(payload: &[u8], signature_algorithm: &SignatureAlgorithm) -> Result<Vec<
     let (hash_algorithm, digest_length) = match *signature_algorithm {
         SignatureAlgorithm::ES256 => (HashAlgorithm::SHA256, SHA256_LENGTH),
         SignatureAlgorithm::ES384 => (HashAlgorithm::SHA384, SHA384_LENGTH),
+        SignatureAlgorithm::ES512 => (HashAlgorithm::SHA512, SHA512_LENGTH),
         SignatureAlgorithm::PS256 => (HashAlgorithm::SHA256, SHA256_LENGTH),
     };
     let mut hash_buf = vec![0; digest_length];
@@ -256,6 +259,7 @@ pub fn verify_signature(
     let mechanism = match *signature_algorithm {
         SignatureAlgorithm::ES256 => CKM_ECDSA,
         SignatureAlgorithm::ES384 => CKM_ECDSA,
+        SignatureAlgorithm::ES512 => CKM_ECDSA,
         SignatureAlgorithm::PS256 => CKM_RSA_PKCS_PSS,
     };
     let rsa_pss_params = CkRsaPkcsPssParams::new();
@@ -263,6 +267,7 @@ pub fn verify_signature(
     let params_item = match *signature_algorithm {
         SignatureAlgorithm::ES256 => ptr::null(),
         SignatureAlgorithm::ES384 => ptr::null(),
+        SignatureAlgorithm::ES512 => ptr::null(),
         SignatureAlgorithm::PS256 => &rsa_pss_params_item,
     };
     let null_cx_ptr: *const raw::c_void = ptr::null();
@@ -317,6 +322,7 @@ pub fn sign(
     let mechanism = match *signature_algorithm {
         SignatureAlgorithm::ES256 => CKM_ECDSA,
         SignatureAlgorithm::ES384 => CKM_ECDSA,
+        SignatureAlgorithm::ES512 => CKM_ECDSA,
         SignatureAlgorithm::PS256 => CKM_RSA_PKCS_PSS,
     };
     let rsa_pss_params = CkRsaPkcsPssParams::new();
@@ -324,6 +330,7 @@ pub fn sign(
     let params_item = match *signature_algorithm {
         SignatureAlgorithm::ES256 => ptr::null(),
         SignatureAlgorithm::ES384 => ptr::null(),
+        SignatureAlgorithm::ES512 => ptr::null(),
         SignatureAlgorithm::PS256 => &rsa_pss_params_item,
     };
     let signature_len = unsafe { PK11_SignatureLen(key) };
