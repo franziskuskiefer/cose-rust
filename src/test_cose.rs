@@ -1,8 +1,10 @@
-use cose::test_setup as test;
-use cose::*;
-use cose::cose_sign::sign;
-use cose::SignatureAlgorithm;
+use test_setup as test;
+use util_test::{sign, verify_signature};
+use SignatureAlgorithm;
+use SignatureParameters;
+use CoseError;
 use std::str::FromStr;
+use decoder::decode_signature;
 
 #[test]
 fn test_cose_decode() {

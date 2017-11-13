@@ -14,8 +14,7 @@ scopeguard = "0.3"
 
 [lib]
 name = "cose"
-path = "src/lib.rs"
-crate-type = ["dylib"]
+path = "src/cose.rs"
 
 [features]
 default = []

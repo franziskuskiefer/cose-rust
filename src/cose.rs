@@ -1,5 +1,14 @@
 //! This module implements COSE using the `cose::decoder` and `cose::nss` bindings.
 
+#![cfg_attr(feature="clippy", feature(plugin))]
+#![cfg_attr(feature="clippy", plugin(clippy))]
+
+#[cfg(test)]
+#[macro_use(defer)]
+extern crate scopeguard;
+
+#[macro_use]
+pub mod cbor;
 pub mod decoder;
 mod util;
 
@@ -10,12 +19,10 @@ mod test_setup;
 #[cfg(test)]
 mod test_nss;
 #[cfg(test)]
-mod cose_sign;
+mod util_test;
 #[cfg(test)]
 mod test_cose;
 
-#[cfg(test)]
-use cose::decoder::*;
 
 #[derive(Debug, PartialEq)]
 pub enum CoseError {
@@ -56,33 +63,4 @@ pub enum SignatureAlgorithm {
     ES384,
     ES512,
     PS256,
-}
-
-/// Verify a COSE signature.
-#[cfg(test)]
-pub fn verify_signature(payload: &[u8], cose_signature: Vec<u8>) -> Result<(), CoseError> {
-    // Parse COSE signature.
-    let cose_signatures = decode_signature(cose_signature, payload)?;
-    if cose_signatures.len() < 1 {
-        return Err(CoseError::MalformedInput);
-    }
-
-    for signature in cose_signatures {
-        let signature_algorithm = &signature.signature_type;
-        let signature_bytes = &signature.signature;
-        let real_payload = &signature.to_verify;
-
-        // Verify the parsed signatures.
-        // We ignore the certs field here because we don't verify the certificate.
-        let verify_result = nss::verify_signature(
-            &signature_algorithm,
-            &signature.signer_cert,
-            real_payload,
-            signature_bytes,
-        );
-        if !verify_result.is_ok() {
-            return Err(CoseError::VerificationFailed);
-        }
-    }
-    Ok(())
 }

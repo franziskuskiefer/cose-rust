@@ -1,8 +1,8 @@
 use cbor::decoder::*;
 use cbor::CborType;
-use cose::CoseError;
-use cose::util::get_sig_struct_bytes;
-use cose::SignatureAlgorithm;
+use CoseError;
+use util::get_sig_struct_bytes;
+use SignatureAlgorithm;
 
 const COSE_SIGN_TAG: u64 = 98;
 

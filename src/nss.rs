@@ -3,7 +3,7 @@ use std::mem;
 use std::ptr;
 use std::os::raw;
 use std::os::raw::c_char;
-use cose::SignatureAlgorithm;
+use SignatureAlgorithm;
 
 type SECItemType = raw::c_uint; // TODO: actually an enum - is this the right size?
 const SI_BUFFER: SECItemType = 0; // called siBuffer in NSS

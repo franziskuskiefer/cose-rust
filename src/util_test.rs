@@ -1,11 +1,11 @@
 /// We don't need COSE signing at the moment. But we need to generate test files.
 /// This module implements basic COSE signing.
-use cose::nss;
-use cose::CoseError;
-use cose::{Signature, SignatureAlgorithm, SignatureParameters};
+use nss;
+use {CoseError, Signature, SignatureAlgorithm, SignatureParameters};
 use std::collections::BTreeMap;
 use cbor::CborType;
-use cose::util::get_sig_struct_bytes;
+use util::get_sig_struct_bytes;
+use decoder::decode_signature;
 
 /// Converts a `SignatureAlgorithm` to its corresponding `CborType`.
 /// See RFC 8152 section 8.1 and RFC 8230 section 5.1.
@@ -162,4 +162,32 @@ pub fn sign(
 
     let cose_signature = build_cose_signature(cert_chain, &signatures);
     Ok(cose_signature)
+}
+
+/// Verify a COSE signature.
+pub fn verify_signature(payload: &[u8], cose_signature: Vec<u8>) -> Result<(), CoseError> {
+    // Parse COSE signature.
+    let cose_signatures = decode_signature(cose_signature, payload)?;
+    if cose_signatures.len() < 1 {
+        return Err(CoseError::MalformedInput);
+    }
+
+    for signature in cose_signatures {
+        let signature_algorithm = &signature.signature_type;
+        let signature_bytes = &signature.signature;
+        let real_payload = &signature.to_verify;
+
+        // Verify the parsed signatures.
+        // We ignore the certs field here because we don't verify the certificate.
+        let verify_result = nss::verify_signature(
+            &signature_algorithm,
+            &signature.signer_cert,
+            real_payload,
+            signature_bytes,
+        );
+        if !verify_result.is_ok() {
+            return Err(CoseError::VerificationFailed);
+        }
+    }
+    Ok(())
 }
