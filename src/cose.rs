@@ -2,7 +2,7 @@
 //! parsing. Verification has to be performed by the caller.
 //!
 //! Example usage: Let `payload` and `cose_signature` be variables holding the
-//! the signed payload and the COSE signature bytes respectively.
+//! signed payload and the COSE signature bytes respectively.
 //! Let further `verify_callback` be a function callback that implements
 //! signature verification.
 //!
@@ -31,9 +31,6 @@
 //! }
 //!```
 
-#![cfg_attr(feature="clippy", feature(plugin))]
-#![cfg_attr(feature="clippy", plugin(clippy))]
-
 #[macro_use]
 pub mod decoder;
 mod cbor;
@@ -56,8 +53,10 @@ pub enum CoseError {
     InvalidArgument,
 }
 
-/// An enum identifying supported signature algorithms. Currently only ECDSA with SHA256 (ES256) and
-/// RSASSA-PSS with SHA-256 (PS256) are supported. Note that with PS256, the salt length is defined
+/// An enum identifying supported signature algorithms.
+/// Currently ES256 (ECDSA with P256 and SHA256), ES384 (ECDSA with P384 and SHA384)
+/// ES512 (ECDSA with P521 and SHA512), and PS256 (RSASSA-PSS with SHA256)
+/// are supported. Note that with PS256, the salt length is defined
 /// to be 32 bytes.
 #[derive(Debug)]
 #[derive(PartialEq)]

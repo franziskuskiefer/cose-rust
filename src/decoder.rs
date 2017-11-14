@@ -180,8 +180,7 @@ pub fn decode_signature(bytes: Vec<u8>, payload: &[u8]) -> Result<Vec<CoseSignat
     let mut result = Vec::new();
     for cose_signature in signatures {
         // cose_sign_array holds the protected body header.
-        let signature =
-            decode_signature_struct(cose_signature, payload, &cose_sign_array[0].clone())?;
+        let signature = decode_signature_struct(cose_signature, payload, &cose_sign_array[0])?;
         result.push(signature);
     }
 
