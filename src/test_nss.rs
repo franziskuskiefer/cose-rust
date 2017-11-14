@@ -1,7 +1,7 @@
-use cose::test_setup as test;
-use cose::nss;
-use cose::nss::NSSError;
-use cose::SignatureAlgorithm;
+use test_setup as test;
+use nss;
+use nss::NSSError;
+use SignatureAlgorithm;
 
 #[test]
 fn test_nss_sign_verify() {

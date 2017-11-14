@@ -25,5 +25,5 @@ pub fn get_sig_struct_bytes(
     sig_structure_array.push(CborType::Bytes(Vec::new()));
     sig_structure_array.push(CborType::Bytes(payload.to_vec()));
 
-    return CborType::Array(sig_structure_array).serialize();
+    CborType::Array(sig_structure_array).serialize()
 }

@@ -1,11 +1,13 @@
-use cbor::decoder::*;
+//! Parse and decode COSE signatures.
+
 use cbor::CborType;
-use cose::CoseError;
-use cose::util::get_sig_struct_bytes;
-use cose::SignatureAlgorithm;
+use cbor::decoder::decode;
+use {CoseError, SignatureAlgorithm};
+use util::get_sig_struct_bytes;
 
 const COSE_SIGN_TAG: u64 = 98;
 
+/// The result of `decode_signature` holding a decoded COSE signature.
 #[derive(Debug)]
 pub struct CoseSignature {
     pub signature_type: SignatureAlgorithm,
@@ -38,37 +40,37 @@ fn get_map_value(map: &CborType, key: &CborType) -> Result<CborType, CoseError> 
     }
 }
 
-/// This syntax is a little unintuitive. Taken together, the two previous definitions essentially
-/// mean:
-///
-/// `COSE_Sign` = [
-///     protected : `empty_or_serialized_map`,
-///     unprotected : `header_map`
-///     payload : bstr / nil,
-///     signatures : [+ `COSE_Signature`]
-/// ]
-///
-/// (`COSE_Sign` is an array. The first element is an empty or serialized map (in our case, it is
-/// never expected to be empty). The second element is a map (it is expected to be empty. The third
-/// element is a bstr or nil (it is expected to be nil). The fourth element is an array of
-/// `COSE_Signature`.)
-///
-/// `COSE_Signature` =  [
-///     Headers,
-///     signature : bstr
-/// ]
-///
-/// but again, unpacking this:
-///
-/// `COSE_Signature` =  [
-///     protected : `empty_or_serialized_map`,
-///     unprotected : `header_map`
-///     signature : bstr
-/// ]
+// This syntax is a little unintuitive. Taken together, the two previous definitions essentially
+// mean:
+//
+// COSE_Sign = [
+//     protected : empty_or_serialized_map,
+//     unprotected : header_map
+//     payload : bstr / nil,
+//     signatures : [+ COSE_Signature]
+// ]
+//
+// (COSE_Sign is an array. The first element is an empty or serialized map (in our case, it is
+// never expected to be empty). The second element is a map (it is expected to be empty. The third
+// element is a bstr or nil (it is expected to be nil). The fourth element is an array of
+// COSE_Signature.)
+//
+// COSE_Signature =  [
+//     Headers,
+//     signature : bstr
+// ]
+//
+// but again, unpacking this:
+//
+// COSE_Signature =  [
+//     protected : empty_or_serialized_map,
+//     unprotected : header_map
+//     signature : bstr
+// ]
 fn decode_signature_struct(
     cose_signature: &CborType,
     payload: &[u8],
-    protected_body_head: CborType,
+    protected_body_head: &CborType,
 ) -> Result<CoseSignature, CoseError> {
     let cose_signature = unpack!(Array, cose_signature);
     if cose_signature.len() != 3 {
@@ -110,7 +112,6 @@ fn decode_signature_struct(
     );
 
     // Read intermediate certificates from protected_body_head.
-    let protected_body_head = &protected_body_head;
     let protected_body_head = unpack!(Bytes, protected_body_head);
     let protected_body_head_map = match decode(protected_body_head.to_vec()) {
         Ok(value) => value,
@@ -133,18 +134,20 @@ fn decode_signature_struct(
     })
 }
 
-/// `COSE_Sign` = [
+/// Decode COSE signature bytes and return a vector of `CoseSignature`.
+///
+///```rust,ignore
+/// COSE_Sign = [
 ///     Headers,
 ///     payload : bstr / nil,
-///     signatures : [+ `COSE_Signature`]
+///     signatures : [+ COSE_Signature]
 /// ]
 ///
 /// Headers = (
-///     protected : `empty_or_serialized_map`,
-///     unprotected : `header_map`
+///     protected : empty_or_serialized_map,
+///     unprotected : header_map
 /// )
-///
-/// See `decode_signature_struct` for description of `COSE_Signature`.
+///```
 pub fn decode_signature(bytes: Vec<u8>, payload: &[u8]) -> Result<Vec<CoseSignature>, CoseError> {
     // This has to be a COSE_Sign object, which is a tagged array.
     let tagged_cose_sign = match decode(bytes) {
@@ -177,8 +180,7 @@ pub fn decode_signature(bytes: Vec<u8>, payload: &[u8]) -> Result<Vec<CoseSignat
     let mut result = Vec::new();
     for cose_signature in signatures {
         // cose_sign_array holds the protected body header.
-        let signature =
-            decode_signature_struct(cose_signature, payload, cose_sign_array[0].clone())?;
+        let signature = decode_signature_struct(cose_signature, payload, &cose_sign_array[0])?;
         result.push(signature);
     }
 
