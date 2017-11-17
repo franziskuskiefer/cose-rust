@@ -7,7 +7,7 @@ use decoder::decode_signature;
 #[test]
 fn test_cose_decode() {
     let payload = b"This is the content.";
-    let cose_signatures = decode_signature(test::COSE_SIGNATURE_BYTES.to_vec(), payload).unwrap();
+    let cose_signatures = decode_signature(&test::COSE_SIGNATURE_BYTES, payload).unwrap();
     assert_eq!(cose_signatures.len(), 1);
     assert_eq!(cose_signatures[0].signature_type, SignatureAlgorithm::ES256);
     assert_eq!(cose_signatures[0].signature, test::SIGNATURE_BYTES.to_vec());

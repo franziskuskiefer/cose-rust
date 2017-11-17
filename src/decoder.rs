@@ -17,6 +17,11 @@ pub struct CoseSignature {
     pub to_verify: Vec<u8>,
 }
 
+pub const COSE_TYPE_ES256: i64 = -7;
+pub const COSE_TYPE_ES384: i64 = -35;
+pub const COSE_TYPE_ES512: i64 = -36;
+pub const COSE_TYPE_PS256: i64 = -37;
+
 macro_rules! unpack {
    ($to:tt, $var:ident) => (
         match *$var {
@@ -77,11 +82,10 @@ fn decode_signature_struct(
         return Err(CoseError::MalformedInput);
     }
     let protected_signature_header_serialized = &cose_signature[0];
-    let protected_signature_header_bytes = unpack!(Bytes, protected_signature_header_serialized)
-        .clone();
+    let protected_signature_header_bytes = unpack!(Bytes, protected_signature_header_serialized);
 
     // Parse the protected signature header.
-    let protected_signature_header = match decode(protected_signature_header_bytes.clone()) {
+    let protected_signature_header = match decode(&protected_signature_header_bytes) {
         Err(_) => return Err(CoseError::DecodingFailure),
         Ok(value) => value,
     };
@@ -89,10 +93,10 @@ fn decode_signature_struct(
     let signature_algorithm = match signature_algorithm {
         CborType::SignedInteger(val) => {
             match val {
-                -7 => SignatureAlgorithm::ES256,
-                -35 => SignatureAlgorithm::ES384,
-                -36 => SignatureAlgorithm::ES512,
-                -37 => SignatureAlgorithm::PS256,
+                COSE_TYPE_ES256 => SignatureAlgorithm::ES256,
+                COSE_TYPE_ES384 => SignatureAlgorithm::ES384,
+                COSE_TYPE_ES512 => SignatureAlgorithm::ES512,
+                COSE_TYPE_PS256 => SignatureAlgorithm::PS256,
                 _ => return Err(CoseError::UnexpectedHeaderValue),
             }
         }
@@ -113,7 +117,7 @@ fn decode_signature_struct(
 
     // Read intermediate certificates from protected_body_head.
     let protected_body_head = unpack!(Bytes, protected_body_head);
-    let protected_body_head_map = match decode(protected_body_head.to_vec()) {
+    let protected_body_head_map = match decode(protected_body_head) {
         Ok(value) => value,
         Err(_) => return Err(CoseError::DecodingFailure),
     };
@@ -148,9 +152,9 @@ fn decode_signature_struct(
 ///     unprotected : header_map
 /// )
 ///```
-pub fn decode_signature(bytes: Vec<u8>, payload: &[u8]) -> Result<Vec<CoseSignature>, CoseError> {
+pub fn decode_signature(bytes: &[u8], payload: &[u8]) -> Result<Vec<CoseSignature>, CoseError> {
     // This has to be a COSE_Sign object, which is a tagged array.
-    let tagged_cose_sign = match decode(bytes) {
+    let tagged_cose_sign = match decode(&bytes) {
         Err(_) => return Err(CoseError::DecodingFailure),
         Ok(value) => value,
     };

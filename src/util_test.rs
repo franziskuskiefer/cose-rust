@@ -6,15 +6,16 @@ use std::collections::BTreeMap;
 use cbor::CborType;
 use util::get_sig_struct_bytes;
 use decoder::decode_signature;
+use decoder::{COSE_TYPE_ES256, COSE_TYPE_ES384, COSE_TYPE_ES512, COSE_TYPE_PS256};
 
 /// Converts a `SignatureAlgorithm` to its corresponding `CborType`.
 /// See RFC 8152 section 8.1 and RFC 8230 section 5.1.
 pub fn signature_type_to_cbor_value(signature_type: &SignatureAlgorithm) -> CborType {
     CborType::SignedInteger(match signature_type {
-        &SignatureAlgorithm::ES256 => -7,
-        &SignatureAlgorithm::ES384 => -35,
-        &SignatureAlgorithm::ES512 => -36,
-        &SignatureAlgorithm::PS256 => -37,
+        &SignatureAlgorithm::ES256 => COSE_TYPE_ES256,
+        &SignatureAlgorithm::ES384 => COSE_TYPE_ES384,
+        &SignatureAlgorithm::ES512 => COSE_TYPE_ES512,
+        &SignatureAlgorithm::PS256 => COSE_TYPE_PS256,
     })
 }
 
@@ -167,7 +168,7 @@ pub fn sign(
 /// Verify a COSE signature.
 pub fn verify_signature(payload: &[u8], cose_signature: Vec<u8>) -> Result<(), CoseError> {
     // Parse COSE signature.
-    let cose_signatures = decode_signature(cose_signature, payload)?;
+    let cose_signatures = decode_signature(&cose_signature, payload)?;
     if cose_signatures.len() < 1 {
         return Err(CoseError::MalformedInput);
     }

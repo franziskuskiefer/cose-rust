@@ -9,29 +9,29 @@ pub const MAX_ARRAY_SIZE: usize = 134_217_728;
 
 /// Struct holding a cursor and additional information for decoding.
 #[derive(Debug)]
-struct DecoderCursor {
-    pub cursor: Cursor<Vec<u8>>,
+struct DecoderCursor<'a> {
+    cursor: Cursor<&'a [u8]>,
 }
 
 /// Apply this mask (with &) to get the value part of the initial byte of a CBOR item.
 const INITIAL_VALUE_MASK: u64 = 0b0001_1111;
 
-impl DecoderCursor {
+impl<'a> DecoderCursor<'a> {
     /// Read and return the given number of bytes from the cursor. Advances the cursor.
     fn read_bytes(&mut self, len: usize) -> Result<Vec<u8>, CborError> {
         if len > MAX_ARRAY_SIZE {
             return Err(CborError::InputTooLarge);
         }
         let mut buf: Vec<u8> = vec![0; len];
-        match self.cursor.read_exact(&mut buf) {
-            Err(_) => return Err(CborError::TruncatedInput),
-            Ok(()) => {}
+        if self.cursor.read_exact(&mut buf).is_err() {
+            Err(CborError::TruncatedInput)
+        } else {
+            Ok(buf)
         }
-        Ok(buf)
     }
 
     /// Convert num bytes to a u64
-    fn read_int_from_bytes(&mut self, num: usize) -> Result<u64, CborError> {
+    fn read_uint_from_bytes(&mut self, num: usize) -> Result<u64, CborError> {
         let x = self.read_bytes(num)?;
         let mut result: u64 = 0;
         for i in (0..num).rev() {
@@ -42,19 +42,18 @@ impl DecoderCursor {
 
     /// Read an integer and return it as u64.
     fn read_int(&mut self) -> Result<u64, CborError> {
-        let first_value = self.read_int_from_bytes(1)? & INITIAL_VALUE_MASK;
-        let val = match first_value {
-            0...23 => first_value,
-            24 => self.read_int_from_bytes(1)?,
-            25 => self.read_int_from_bytes(2)?,
-            26 => self.read_int_from_bytes(4)?,
-            27 => self.read_int_from_bytes(8)?,
-            _ => return Err(CborError::MalformedInput),
-        };
-        Ok(val)
+        let first_value = self.read_uint_from_bytes(1)? & INITIAL_VALUE_MASK;
+        match first_value {
+            0...23 => Ok(first_value),
+            24 => self.read_uint_from_bytes(1),
+            25 => self.read_uint_from_bytes(2),
+            26 => self.read_uint_from_bytes(4),
+            27 => self.read_uint_from_bytes(8),
+            _ => Err(CborError::MalformedInput),
+        }
     }
 
-    fn read_signed_int(&mut self) -> Result<CborType, CborError> {
+    fn read_negative_int(&mut self) -> Result<CborType, CborError> {
         let uint = self.read_int()?;
         if uint > i64::max_value() as u64 {
             return Err(CborError::InputValueOutOfRange);
@@ -96,16 +95,15 @@ impl DecoderCursor {
         for _ in 0..num_items {
             let key_val = self.decode_item()?;
             let item_value = self.decode_item()?;
-            if map.contains_key(&key_val) {
+            if map.insert(key_val, item_value).is_some() {
                 return Err(CborError::DuplicateMapKey);
             }
-            map.insert(key_val, item_value);
         }
         Ok(CborType::Map(map))
     }
 
     fn read_null(&mut self) -> Result<CborType, CborError> {
-        let value = self.read_int_from_bytes(1)? & INITIAL_VALUE_MASK;
+        let value = self.read_uint_from_bytes(1)? & INITIAL_VALUE_MASK;
         if value != 22 {
             return Err(CborError::UnsupportedType);
         }
@@ -124,29 +122,28 @@ impl DecoderCursor {
     /// Decodes the next CBOR item.
     pub fn decode_item(&mut self) -> Result<CborType, CborError> {
         let major_type = self.peek_byte()? >> 5;
-        let result = match major_type {
+        match major_type {
             0 => {
                 let value = self.read_int()?;
-                CborType::Integer(value)
+                Ok(CborType::Integer(value))
             }
-            1 => self.read_signed_int()?,
-            2 => self.read_byte_string()?,
-            4 => self.read_array()?,
-            5 => self.read_map()?,
+            1 => self.read_negative_int(),
+            2 => self.read_byte_string(),
+            4 => self.read_array(),
+            5 => self.read_map(),
             6 => {
                 let tag = self.read_int()?;
                 let item = self.decode_item()?;
-                CborType::Tag(tag, Box::new(item))
+                Ok(CborType::Tag(tag, Box::new(item)))
             }
-            7 => self.read_null()?,
-            _ => return Err(CborError::UnsupportedType),
-        };
-        Ok(result)
+            7 => self.read_null(),
+            _ => Err(CborError::UnsupportedType),
+        }
     }
 }
 
 /// Read the CBOR structure in bytes and return it as a `CborType`.
-pub fn decode(bytes: Vec<u8>) -> Result<CborType, CborError> {
+pub fn decode(bytes: &[u8]) -> Result<CborType, CborError> {
     let mut decoder_cursor = DecoderCursor { cursor: Cursor::new(bytes) };
     decoder_cursor.decode_item()
     // TODO: check cursor at end?
