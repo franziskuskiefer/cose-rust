@@ -4,19 +4,19 @@ use std::collections::BTreeMap;
 
 // First test all the basic types
 fn test_decoder(bytes: Vec<u8>, expected: CborType) {
-    let result = decode(bytes);
+    let result = decode(&bytes);
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), expected);
 }
 
 fn test_decoder_error(bytes: Vec<u8>, expected_error: CborError) {
-    let result = decode(bytes);
+    let result = decode(&bytes);
     assert!(result.is_err());
     assert_eq!(result.unwrap_err(), expected_error);
 }
 
 fn test_integer(bytes: Vec<u8>, expected: u64) {
-    let decoded = decode(bytes).unwrap();
+    let decoded = decode(&bytes).unwrap();
     match decoded {
         CborType::Integer(val) => assert_eq!(val, expected),
         _ => assert_eq!(1, 0),
@@ -67,7 +67,7 @@ fn test_integer_objects() {
 
 #[cfg(test)]
 fn test_tag(bytes: Vec<u8>, expected_tag: u64, expected_value: CborType) {
-    let decoded = decode(bytes).unwrap();
+    let decoded = decode(&bytes).unwrap();
     match decoded {
         CborType::Tag(tag, value) => {
             assert_eq!(expected_tag, tag);

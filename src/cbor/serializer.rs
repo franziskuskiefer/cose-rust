@@ -86,10 +86,7 @@ fn encode_array(output: &mut Vec<u8>, array: &[CborType]) {
 fn encode_map(output: &mut Vec<u8>, map: &BTreeMap<CborType, CborType>) {
     common_encode_unsigned(output, 5, map.len() as u64);
     for (key, value) in map {
-        let key_encoded = key.serialize();
-        for byte in key_encoded {
-            output.push(byte);
-        }
+        output.append(&mut key.serialize());
         output.append(&mut value.serialize());
     }
 }
