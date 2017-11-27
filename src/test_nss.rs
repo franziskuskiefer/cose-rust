@@ -9,7 +9,12 @@ fn test_nss_sign_verify() {
     let payload = b"sample";
 
     // Sign.
-    let signature_result = nss::sign(&SignatureAlgorithm::ES256, &test::PKCS8_P256_EE, payload);
+    let signature_result = nss::sign(
+        &SignatureAlgorithm::ES256,
+        &test::PKCS8_P256_EE,
+        payload,
+        true,
+    );
     assert!(signature_result.is_ok());
     let signature_result = signature_result.unwrap();
 
@@ -20,6 +25,7 @@ fn test_nss_sign_verify() {
             &test::P256_EE,
             payload,
             &signature_result,
+            true,
         ).is_ok()
     );
 }
@@ -30,7 +36,12 @@ fn test_nss_sign_verify_different_payload() {
     let payload = b"sample";
 
     // Sign.
-    let signature_result = nss::sign(&SignatureAlgorithm::ES256, &test::PKCS8_P256_EE, payload);
+    let signature_result = nss::sign(
+        &SignatureAlgorithm::ES256,
+        &test::PKCS8_P256_EE,
+        payload,
+        true,
+    );
     assert!(signature_result.is_ok());
     let signature_result = signature_result.unwrap();
 
@@ -41,6 +52,7 @@ fn test_nss_sign_verify_different_payload() {
         &test::P256_EE,
         payload,
         &signature_result,
+        true,
     );
     assert!(verify_result.is_err());
     assert_eq!(verify_result, Err(NSSError::SignatureVerificationFailed));
@@ -52,7 +64,12 @@ fn test_nss_sign_verify_wrong_cert() {
     let payload = b"sample";
 
     // Sign.
-    let signature_result = nss::sign(&SignatureAlgorithm::ES256, &test::PKCS8_P256_EE, payload);
+    let signature_result = nss::sign(
+        &SignatureAlgorithm::ES256,
+        &test::PKCS8_P256_EE,
+        payload,
+        true,
+    );
     assert!(signature_result.is_ok());
     let signature_result = signature_result.unwrap();
 
@@ -62,6 +79,7 @@ fn test_nss_sign_verify_wrong_cert() {
         &test::P384_EE,
         payload,
         &signature_result,
+        true,
     );
     assert!(verify_result.is_err());
     assert_eq!(verify_result, Err(NSSError::SignatureVerificationFailed));

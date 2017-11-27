@@ -126,6 +126,7 @@ pub fn sign(
     payload: &[u8],
     cert_chain: &[&[u8]],
     parameters: &Vec<SignatureParameters>,
+    hash_payload: bool,
 ) -> Result<Vec<u8>, CoseError> {
     assert!(parameters.len() > 0);
     if parameters.len() < 1 {
@@ -145,10 +146,11 @@ pub fn sign(
             payload,
         );
 
-        let signature_bytes = match nss::sign(&param.algorithm, &param.pkcs8, &payload) {
-            Err(_) => return Err(CoseError::SigningFailed),
-            Ok(signature) => signature,
-        };
+        let signature_bytes =
+            match nss::sign(&param.algorithm, &param.pkcs8, &payload, hash_payload) {
+                Err(_) => return Err(CoseError::SigningFailed),
+                Ok(signature) => signature,
+            };
         let signature = Signature {
             parameter: param,
             signature_bytes: signature_bytes,
@@ -166,7 +168,11 @@ pub fn sign(
 }
 
 /// Verify a COSE signature.
-pub fn verify_signature(payload: &[u8], cose_signature: Vec<u8>) -> Result<(), CoseError> {
+pub fn verify_signature(
+    payload: &[u8],
+    cose_signature: Vec<u8>,
+    hash_payload: bool,
+) -> Result<(), CoseError> {
     // Parse COSE signature.
     let cose_signatures = decode_signature(&cose_signature, payload)?;
     if cose_signatures.len() < 1 {
@@ -185,6 +191,7 @@ pub fn verify_signature(payload: &[u8], cose_signature: Vec<u8>) -> Result<(), C
             &signature.signer_cert,
             real_payload,
             signature_bytes,
+            hash_payload,
         );
         if !verify_result.is_ok() {
             return Err(CoseError::VerificationFailed);

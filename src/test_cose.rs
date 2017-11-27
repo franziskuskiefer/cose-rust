@@ -4,6 +4,12 @@ use {CoseError, SignatureAlgorithm, SignatureParameters};
 use std::str::FromStr;
 use decoder::decode_signature;
 
+use std::env;
+use std::path::Path;
+use std::fs::File;
+use std::error::Error;
+use std::io::prelude::*;
+
 #[test]
 fn test_cose_decode() {
     let payload = b"This is the content.";
@@ -34,43 +40,66 @@ const P521_PARAMS: SignatureParameters = SignatureParameters {
     pkcs8: &test::PKCS8_P521_EE,
 };
 
-#[cfg(test)]
-fn test_verify(payload: &[u8], cert_chain: &[&[u8]], params_vec: Vec<SignatureParameters>) {
-    test::setup();
-    let cose_signature = sign(payload, cert_chain, &params_vec);
-    assert!(cose_signature.is_ok());
-    let cose_signature = cose_signature.unwrap();
-
-    // Verify signature.
-    assert!(verify_signature(payload, cose_signature).is_ok());
+fn write_bytes(file_name: String, bytes: &[u8]) {
+    let path = Path::new(&file_name);
+    let mut file = match File::create(&path) {
+        Err(why) => panic!("Couldn't open {}: {}", path.display(), why.description()),
+        Ok(file) => file,
+    };
+    match file.write_all(bytes) {
+        Err(why) => {
+            panic!(
+                "Couldn't write to {}: {}",
+                path.display(),
+                why.description()
+            )
+        }
+        Ok(_) => println!("Successfully wrote to {}", path.display()),
+    }
 }
 
-#[cfg(test)]
+fn test_verify(
+    payload: &[u8],
+    cert_chain: &[&[u8]],
+    params_vec: Vec<SignatureParameters>,
+    hash_payload: bool,
+) {
+    test::setup();
+    let cose_signature = sign(payload, cert_chain, &params_vec, hash_payload);
+    assert!(cose_signature.is_ok());
+    let cose_signature = cose_signature.unwrap();
+    if let Ok(sig_file) = env::var("COSE_SIGNATURE_FILE") {
+        write_bytes(sig_file, &cose_signature);
+    }
+
+    // Verify signature.
+    assert!(verify_signature(payload, cose_signature, hash_payload).is_ok());
+}
+
 fn test_verify_modified_payload(
     payload: &mut [u8],
     cert_chain: &[&[u8]],
     params_vec: Vec<SignatureParameters>,
 ) {
     test::setup();
-    let cose_signature = sign(payload, cert_chain, &params_vec);
+    let cose_signature = sign(payload, cert_chain, &params_vec, true);
     assert!(cose_signature.is_ok());
     let cose_signature = cose_signature.unwrap();
 
     // Verify signature.
     payload[0] = !payload[0];
-    let verify_result = verify_signature(payload, cose_signature);
+    let verify_result = verify_signature(payload, cose_signature, true);
     assert!(verify_result.is_err());
     assert_eq!(verify_result, Err(CoseError::VerificationFailed));
 }
 
-#[cfg(test)]
 fn test_verify_modified_signature(
     payload: &[u8],
     cert_chain: &[&[u8]],
     params_vec: Vec<SignatureParameters>,
 ) {
     test::setup();
-    let cose_signature = sign(payload, cert_chain, &params_vec);
+    let cose_signature = sign(payload, cert_chain, &params_vec, true);
     assert!(cose_signature.is_ok());
     let mut cose_signature = cose_signature.unwrap();
 
@@ -79,7 +108,7 @@ fn test_verify_modified_signature(
     cose_signature[len - 15] = !cose_signature[len - 15];
 
     // Verify signature.
-    let verify_result = verify_signature(payload, cose_signature);
+    let verify_result = verify_signature(payload, cose_signature, true);
     assert!(verify_result.is_err());
     assert_eq!(verify_result, Err(CoseError::VerificationFailed));
 }
@@ -93,12 +122,12 @@ fn test_verify_verification_fails(
     params_vec: Vec<SignatureParameters>,
 ) {
     test::setup();
-    let cose_signature = sign(payload, cert_chain, &params_vec);
+    let cose_signature = sign(payload, cert_chain, &params_vec, true);
     assert!(cose_signature.is_ok());
     let cose_signature = cose_signature.unwrap();
 
     // Verify signature.
-    let verify_result = verify_signature(payload, cose_signature);
+    let verify_result = verify_signature(payload, cose_signature, true);
     assert!(verify_result.is_err());
     assert_eq!(verify_result, Err(CoseError::VerificationFailed));
 }
@@ -111,15 +140,33 @@ fn test_cose_sign_verify() {
     let certs: [&[u8]; 2] = [&test::P256_ROOT,
                              &test::P256_INT];
     let params_vec = vec![P256_PARAMS];
-    test_verify(payload, &certs, params_vec);
+    test_verify(payload, &certs, params_vec, true);
 
     // P384
     let params_vec = vec![P384_PARAMS];
-    test_verify(payload, &certs, params_vec);
+    test_verify(payload, &certs, params_vec, true);
 
     // P521
     let params_vec = vec![P521_PARAMS];
-    test_verify(payload, &certs, params_vec);
+    test_verify(payload, &certs, params_vec, true);
+}
+
+#[test]
+fn test_cose_sign_verify_xpi() {
+    let payload: [u8; 32] = [0x3b, 0xcd, 0x8a, 0x7d, 0x8b, 0xc3, 0x16, 0xc9, 0x64, 0x8c, 0x20,
+                             0xad, 0x36, 0x4a, 0xf4, 0xa3, 0x83, 0x18, 0xa4, 0x58, 0x17, 0xce,
+                             0x38, 0x6b, 0xd9, 0xbc, 0x22, 0xcb, 0x1f, 0x3c, 0x52, 0x77];
+
+    // xpc shell test cert (p256 - int - root)
+    let certs: [&[u8]; 2] = [&test::XPCSHELL_TEST_ROOT,
+                             &test::XPCSHELL_TEST_INT];
+    let params = SignatureParameters {
+        certificate: &test::XPCSHELL_TEST_P256_INT_SIGNED,
+        algorithm: SignatureAlgorithm::ES256,
+        pkcs8: &test::PKCS8_P256_EE,
+    };
+    let params_vec = vec![params];
+    test_verify(&payload, &certs, params_vec, false);
 }
 
 #[test]
@@ -134,7 +181,7 @@ fn test_cose_sign_verify_modified_payload() {
 }
 
 #[test]
-fn test_cose_sign_verify_wrong_cert() {
+fn test_cose_sign_verify_wrong_cert_type() {
     let payload = b"This is the content.";
     let certs: [&[u8]; 2] = [&test::P256_ROOT,
                              &test::P256_INT];
@@ -142,6 +189,20 @@ fn test_cose_sign_verify_wrong_cert() {
         certificate: &test::P384_EE,
         algorithm: SignatureAlgorithm::ES256,
         pkcs8: &test::PKCS8_P256_EE,
+    };
+    let params_vec = vec![params];
+    test_verify_verification_fails(payload, &certs, params_vec);
+}
+
+#[test]
+fn test_cose_sign_verify_wrong_cert() {
+    let payload = b"This is the content.";
+    let certs: [&[u8]; 2] = [&test::P256_ROOT,
+                             &test::P256_INT];
+    let params = SignatureParameters {
+        certificate: &test::P256_EE,
+        algorithm: SignatureAlgorithm::ES256,
+        pkcs8: &test::PKCS8_P256_OTHER_EE,
     };
     let params_vec = vec![params];
     test_verify_verification_fails(payload, &certs, params_vec);
@@ -168,7 +229,7 @@ fn test_cose_sign_verify_rsa() {
     let certs: [&[u8]; 2] = [&test::RSA_ROOT,
                              &test::RSA_INT];
     let params_vec = vec![RSA_PARAMS];
-    test_verify(payload, &certs, params_vec);
+    test_verify(payload, &certs, params_vec, true);
 }
 
 #[test]
@@ -200,7 +261,7 @@ fn test_cose_sign_verify_two_signatures() {
                              &test::RSA_INT];
     let params_vec = vec![P256_PARAMS,
                           RSA_PARAMS];
-    test_verify(payload, &certs, params_vec);
+    test_verify(payload, &certs, params_vec, true);
 }
 
 #[test]

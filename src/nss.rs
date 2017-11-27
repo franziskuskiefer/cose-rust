@@ -219,6 +219,7 @@ pub fn verify_signature(
     cert: &[u8],
     payload: &[u8],
     signature: &[u8],
+    hash_payload: bool,
 ) -> Result<(), NSSError> {
     let slot = unsafe { PK11_GetInternalSlot() };
     if slot.is_null() {
@@ -228,8 +229,12 @@ pub fn verify_signature(
         PK11_FreeSlot(slot);
     });
 
-    let hash_buf = hash(payload, signature_algorithm).unwrap();
-    let hash_item = SECItem::maybe_new(hash_buf.as_slice())?;
+    let hashed = if hash_payload {
+        hash(payload, signature_algorithm).unwrap()
+    } else {
+        payload.to_vec()
+    };
+    let hash_item = SECItem::maybe_new(hashed.as_slice())?;
 
     // Import DER cert into NSS.
     let der_cert = SECItem::maybe_new(cert)?;
@@ -291,7 +296,11 @@ pub fn sign(
     signature_algorithm: &SignatureAlgorithm,
     pk8: &[u8],
     payload: &[u8],
+    hash_payload: bool,
 ) -> Result<Vec<u8>, NSSError> {
+    if payload.len() > raw::c_int::max_value() as usize {
+        return Err(NSSError::InputTooLarge);
+    }
     let slot = unsafe { PK11_GetInternalSlot() };
     if slot.is_null() {
         return Err(NSSError::LibraryFailure);
@@ -332,14 +341,20 @@ pub fn sign(
         SignatureAlgorithm::ES512 => ptr::null(),
         SignatureAlgorithm::PS256 => &rsa_pss_params_item,
     };
+
     let signature_len = unsafe { PK11_SignatureLen(key) };
+    let hashed = if hash_payload {
+        hash(payload, signature_algorithm).unwrap()
+    } else {
+        payload.to_vec()
+    };
+    let hash_item = SECItem::maybe_new(hashed.as_slice())?;
+
     // Allocate enough space for the signature.
     let mut signature: Vec<u8> = Vec::with_capacity(signature_len);
-    let hash_buf = hash(payload, signature_algorithm).unwrap();
-    let hash_item = SECItem::maybe_new(hash_buf.as_slice())?;
+    // Get a mutable SECItem on the preallocated signature buffer. PK11_SignWithMechanism will
+    // fill the SECItem's buf with the bytes of the signature.
     {
-        // Get a mutable SECItem on the preallocated signature buffer. PK11_SignWithMechanism will
-        // fill the SECItem's buf with the bytes of the signature.
         let mut signature_item = SECItemMut::maybe_from_empty_preallocated_vec(&mut signature)?;
         let rv = unsafe {
             PK11_SignWithMechanism(key, mechanism, params_item, &mut signature_item, &hash_item)
