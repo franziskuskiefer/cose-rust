@@ -109,24 +109,51 @@ fn decode_signature_struct(
     // Build signature structure to verify.
     let signature_bytes = &cose_signature[2];
     let signature_bytes = unpack!(Bytes, signature_bytes).clone();
+    let tmp = vec![];
     let sig_structure_bytes = get_sig_struct_bytes(
         protected_body_head.clone(),
         protected_signature_header_serialized.clone(),
+        &tmp, // no external_aad here.
         payload,
     );
 
     // Read intermediate certificates from protected_body_head.
-    let protected_body_head = unpack!(Bytes, protected_body_head);
-    let protected_body_head_map = match decode(protected_body_head) {
-        Ok(value) => value,
-        Err(_) => return Err(CoseError::DecodingFailure),
+    let protected_body_head = match protected_body_head.clone() {
+        CborType::Bytes(cbor_object) => cbor_object,
+        // A protected body head that is empty can be encoded as an empty map.
+        CborType::Map(cbor_object) => {
+            if cbor_object.len() != 0 {
+                // The map MUST be empty.
+                return Err(CoseError::MalformedInput);
+            }
+            Vec::new()
+        },
+        _ => return Err(CoseError::UnexpectedType),
     };
-    let intermediate_certs_array = &get_map_value(&protected_body_head_map, &CborType::Integer(4))?;
-    let intermediate_certs = unpack!(Array, intermediate_certs_array);
     let mut certs: Vec<Vec<u8>> = Vec::new();
-    for cert in intermediate_certs {
-        let cert = unpack!(Bytes, cert);
-        certs.push(cert.clone());
+    if protected_body_head.len() > 0 {
+        // let protected_body_head = unpack!(Bytes, protected_body_head);
+        let protected_body_head_map = match decode(&protected_body_head) {
+            Ok(value) => value,
+            Err(_) => {
+                return Err(CoseError::DecodingFailure)
+            },
+        };
+        let maybe_int_values = get_map_value(&protected_body_head_map, &CborType::Integer(4));
+        let maybe_array = match maybe_int_values {
+            Err(CoseError::MissingHeader) => {
+                // This is OK. The header might be empty.
+                CborType::Array(vec![])
+            },
+            Ok(result) => result,
+            Err(err) => return Err(err)
+        };
+        let intermediate_certs_array = &maybe_array;
+        let intermediate_certs = unpack!(Array, intermediate_certs_array);
+        for cert in intermediate_certs {
+            let cert = unpack!(Bytes, cert);
+            certs.push(cert.clone());
+        }
     }
 
     Ok(CoseSignature {

@@ -113,6 +113,11 @@ fn test_cose_sign_verify() {
     let params_vec = vec![P256_PARAMS];
     test_verify(payload, &certs, params_vec);
 
+    // P256, no other certs.
+    let certs: [&[u8]; 0] = [];
+    let params_vec = vec![P256_PARAMS];
+    test_verify(payload, &certs, params_vec);
+
     // P384
     let params_vec = vec![P384_PARAMS];
     test_verify(payload, &certs, params_vec);
