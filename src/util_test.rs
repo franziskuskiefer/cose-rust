@@ -139,11 +139,9 @@ pub fn sign(
         let protected_sig_header_serialized =
             build_protected_sig_header(param.certificate, &param.algorithm);
         let protected_header_serialized = build_protected_header(cert_chain);
-        let tmp = vec![];
         let payload = get_sig_struct_bytes(
             protected_header_serialized,
             protected_sig_header_serialized,
-            &tmp,
             payload,
         );
 
