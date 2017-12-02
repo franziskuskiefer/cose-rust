@@ -116,6 +116,10 @@ fn decode_signature_struct(
     );
 
     // Read intermediate certificates from protected_body_head.
+    // Any tampering of the protected header during transport will be detected
+    // because it is input to the signature verification.
+    // Note that a protected header has to be present and hold a kid with an
+    // empty list of intermediate certificates.
     let protected_body_head = unpack!(Bytes, protected_body_head);
     let protected_body_head_map = match decode(protected_body_head) {
         Ok(value) => value,

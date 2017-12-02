@@ -20,7 +20,7 @@ pub fn get_sig_struct_bytes(
     let sig_structure_array: Vec<CborType> = vec![CborType::String(String::from("Signature")),
                                                   protected_body_header_serialized,
                                                   protected_signature_header_serialized,
-                                                  CborType::Bytes(Vec::new()),
+                                                  CborType::Null,
                                                   CborType::Bytes(payload.to_vec())];
 
     CborType::Array(sig_structure_array).serialize()

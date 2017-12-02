@@ -34,7 +34,6 @@ const P521_PARAMS: SignatureParameters = SignatureParameters {
     pkcs8: &test::PKCS8_P521_EE,
 };
 
-#[cfg(test)]
 fn test_verify(payload: &[u8], cert_chain: &[&[u8]], params_vec: Vec<SignatureParameters>) {
     test::setup();
     let cose_signature = sign(payload, cert_chain, &params_vec);
@@ -45,7 +44,6 @@ fn test_verify(payload: &[u8], cert_chain: &[&[u8]], params_vec: Vec<SignaturePa
     assert!(verify_signature(payload, cose_signature).is_ok());
 }
 
-#[cfg(test)]
 fn test_verify_modified_payload(
     payload: &mut [u8],
     cert_chain: &[&[u8]],
@@ -63,7 +61,6 @@ fn test_verify_modified_payload(
     assert_eq!(verify_result, Err(CoseError::VerificationFailed));
 }
 
-#[cfg(test)]
 fn test_verify_modified_signature(
     payload: &[u8],
     cert_chain: &[&[u8]],
@@ -86,7 +83,6 @@ fn test_verify_modified_signature(
 
 // This can be used with inconsistent parameters that make the verification fail.
 // In particular, the signing key does not match the certificate used to verify.
-#[cfg(test)]
 fn test_verify_verification_fails(
     payload: &[u8],
     cert_chain: &[&[u8]],
@@ -113,6 +109,11 @@ fn test_cose_sign_verify() {
     let params_vec = vec![P256_PARAMS];
     test_verify(payload, &certs, params_vec);
 
+    // P256, no other certs.
+    let certs: [&[u8]; 0] = [];
+    let params_vec = vec![P256_PARAMS];
+    test_verify(payload, &certs, params_vec);
+
     // P384
     let params_vec = vec![P384_PARAMS];
     test_verify(payload, &certs, params_vec);
@@ -120,6 +121,13 @@ fn test_cose_sign_verify() {
     // P521
     let params_vec = vec![P521_PARAMS];
     test_verify(payload, &certs, params_vec);
+}
+
+#[test]
+fn test_cose_verify_xpi_signature() {
+    // This signature was created with sign_app.py from m-c.
+    test::setup();
+    assert!(verify_signature(&test::XPI_PAYLOAD, test::XPI_SIGNATURE.to_vec()).is_ok());
 }
 
 #[test]
