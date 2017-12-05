@@ -46,7 +46,7 @@ fn get_map_value(
 
 fn validate_empty_map(map: &CborType) -> Result<(), CoseError> {
     let unpacked = unpack!(Map, map);
-    if unpacked.len() != 0 {
+    if !unpacked.is_empty() {
         return Err(CoseError::MalformedInput);
     }
     Ok(())
@@ -92,7 +92,7 @@ fn decode_signature_struct(
     let protected_signature_header_bytes = unpack!(Bytes, protected_signature_header_serialized);
 
     // Parse the protected signature header.
-    let protected_signature_header = &match decode(&protected_signature_header_bytes) {
+    let protected_signature_header = &match decode(protected_signature_header_bytes) {
         Err(_) => return Err(CoseError::DecodingFailure),
         Ok(value) => value,
     };
@@ -100,7 +100,7 @@ fn decode_signature_struct(
     if protected_signature_header.len() != 2 {
         return Err(CoseError::MalformedInput);
     }
-    let signature_algorithm = get_map_value(&protected_signature_header, &CborType::Integer(1))?;
+    let signature_algorithm = get_map_value(protected_signature_header, &CborType::Integer(1))?;
     let signature_algorithm = match signature_algorithm {
         CborType::SignedInteger(val) => {
             match val {
@@ -114,7 +114,7 @@ fn decode_signature_struct(
         _ => return Err(CoseError::UnexpectedType),
     };
 
-    let ee_cert = &get_map_value(&protected_signature_header, &CborType::Integer(4))?;
+    let ee_cert = &get_map_value(protected_signature_header, &CborType::Integer(4))?;
     let ee_cert = unpack!(Bytes, ee_cert).clone();
 
     // The unprotected header section is expected to be an empty map.
@@ -143,7 +143,7 @@ fn decode_signature_struct(
     if protected_body_head_map.len() != 1 {
         return Err(CoseError::MalformedInput);
     }
-    let intermediate_certs_array = &get_map_value(&protected_body_head_map, &CborType::Integer(4))?;
+    let intermediate_certs_array = &get_map_value(protected_body_head_map, &CborType::Integer(4))?;
     let intermediate_certs = unpack!(Array, intermediate_certs_array);
     let mut certs: Vec<Vec<u8>> = Vec::new();
     for cert in intermediate_certs {
@@ -176,7 +176,7 @@ fn decode_signature_struct(
 ///```
 pub fn decode_signature(bytes: &[u8], payload: &[u8]) -> Result<Vec<CoseSignature>, CoseError> {
     // This has to be a COSE_Sign object, which is a tagged array.
-    let tagged_cose_sign = match decode(&bytes) {
+    let tagged_cose_sign = match decode(bytes) {
         Err(_) => return Err(CoseError::DecodingFailure),
         Ok(value) => value,
     };
@@ -200,8 +200,8 @@ pub fn decode_signature(bytes: &[u8], payload: &[u8]) -> Result<Vec<CoseSignatur
     validate_empty_map(&cose_sign_array[1])?;
 
     // The payload is expected to be Null (i.e. this is a detached signature).
-    match &cose_sign_array[2] {
-        &CborType::Null => {}
+    match cose_sign_array[2] {
+        CborType::Null => {}
         _ => return Err(CoseError::UnexpectedType),
     };
 
