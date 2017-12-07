@@ -2,7 +2,7 @@ use test_setup as test;
 use util_test::{sign, verify_signature};
 use {CoseError, SignatureAlgorithm, SignatureParameters};
 use std::str::FromStr;
-use decoder::decode_signature;
+use decoder::{COSE_HEADER_ALG, COSE_HEADER_KID, COSE_SIGN_TAG, COSE_TYPE_ES256, decode_signature};
 use cbor::CborType;
 use std::collections::BTreeMap;
 
@@ -247,9 +247,9 @@ fn test_cose_format_error(bytes: &[u8], expected_error: CoseError) {
 }
 
 // Helper function to take a `Vec<CborType>`, wrap it in a `CborType::Array`, tag it with the
-// COSE_Sign tag (98), and serialize it to a `Vec<u8>`.
+// COSE_Sign tag (COSE_SIGN_TAG = 98), and serialize it to a `Vec<u8>`.
 fn wrap_tag_and_encode_array(array: Vec<CborType>) -> Vec<u8> {
-    CborType::Tag(98, Box::new(CborType::Array(array))).serialize()
+    CborType::Tag(COSE_SIGN_TAG, Box::new(CborType::Array(array))).serialize()
 }
 
 // Helper function to create an encoded protected header for a COSE_Sign or COSE_Signature
@@ -281,9 +281,9 @@ fn make_minimally_valid_cose_sign_protected_header() -> Vec<u8> {
 // Helper function to create a minimally-valid COSE_Signature (i.e. "body").
 fn make_minimally_valid_cose_signature_protected_header() -> Vec<u8> {
     encode_test_protected_header(
-        vec![CborType::Integer(1),
-             CborType::Integer(4)],
-        vec![CborType::SignedInteger(-7),
+        vec![CborType::Integer(COSE_HEADER_ALG),
+             CborType::Integer(COSE_HEADER_KID)],
+        vec![CborType::SignedInteger(COSE_TYPE_ES256),
              CborType::Bytes(Vec::new())],
     )
 }
@@ -391,8 +391,10 @@ fn test_cose_sign_protected_header_missing_kid() {
 
 #[test]
 fn test_cose_sign_protected_header_kid_wrong_type() {
-    let body_protected_header =
-        encode_test_protected_header(vec![CborType::Integer(4)], vec![CborType::Integer(2)]);
+    let body_protected_header = encode_test_protected_header(
+        vec![CborType::Integer(COSE_HEADER_KID)],
+        vec![CborType::Integer(2)],
+    );
     let signature_protected_header = make_minimally_valid_cose_signature_protected_header();
     let signature = build_test_cose_signature(signature_protected_header);
     let values = vec![CborType::Bytes(body_protected_header),
@@ -406,7 +408,7 @@ fn test_cose_sign_protected_header_kid_wrong_type() {
 #[test]
 fn test_cose_sign_protected_header_extra_header_key() {
     let body_protected_header = encode_test_protected_header(
-        vec![CborType::Integer(4),
+        vec![CborType::Integer(COSE_HEADER_KID),
              CborType::Integer(2)],
         vec![CborType::Bytes(Vec::new()),
              CborType::Integer(2)],
@@ -547,8 +549,8 @@ fn test_cose_signature_protected_header_missing_alg() {
     let body_protected_header = make_minimally_valid_cose_sign_protected_header();
     let signature_protected_header = encode_test_protected_header(
         vec![CborType::Integer(2),
-             CborType::Integer(4)],
-        vec![CborType::SignedInteger(-7),
+             CborType::Integer(COSE_HEADER_KID)],
+        vec![CborType::SignedInteger(COSE_TYPE_ES256),
              CborType::Bytes(Vec::new())],
     );
     let signature = build_test_cose_signature(signature_protected_header);
@@ -564,9 +566,9 @@ fn test_cose_signature_protected_header_missing_alg() {
 fn test_cose_signature_protected_header_missing_kid() {
     let body_protected_header = make_minimally_valid_cose_sign_protected_header();
     let signature_protected_header = encode_test_protected_header(
-        vec![CborType::Integer(1),
+        vec![CborType::Integer(COSE_HEADER_ALG),
              CborType::Integer(3)],
-        vec![CborType::SignedInteger(-7),
+        vec![CborType::SignedInteger(COSE_TYPE_ES256),
              CborType::Bytes(Vec::new())],
     );
     let signature = build_test_cose_signature(signature_protected_header);
@@ -584,7 +586,7 @@ fn test_cose_signature_protected_header_wrong_key_types() {
     let signature_protected_header = encode_test_protected_header(
         vec![CborType::SignedInteger(-1),
              CborType::Bytes(vec![0])],
-        vec![CborType::SignedInteger(-7),
+        vec![CborType::SignedInteger(COSE_TYPE_ES256),
              CborType::Bytes(Vec::new())],
     );
     let signature = build_test_cose_signature(signature_protected_header);
@@ -600,8 +602,8 @@ fn test_cose_signature_protected_header_wrong_key_types() {
 fn test_cose_signature_protected_header_unexpected_alg_type() {
     let body_protected_header = make_minimally_valid_cose_sign_protected_header();
     let signature_protected_header = encode_test_protected_header(
-        vec![CborType::Integer(1),
-             CborType::Integer(4)],
+        vec![CborType::Integer(COSE_HEADER_ALG),
+             CborType::Integer(COSE_HEADER_KID)],
         vec![CborType::Integer(10),
              CborType::Integer(4)],
     );
@@ -618,8 +620,8 @@ fn test_cose_signature_protected_header_unexpected_alg_type() {
 fn test_cose_signature_protected_header_unsupported_alg() {
     let body_protected_header = make_minimally_valid_cose_sign_protected_header();
     let signature_protected_header = encode_test_protected_header(
-        vec![CborType::Integer(1),
-             CborType::Integer(4)],
+        vec![CborType::Integer(COSE_HEADER_ALG),
+             CborType::Integer(COSE_HEADER_KID)],
         vec![CborType::SignedInteger(-10),
              CborType::Bytes(Vec::new())],
     );
@@ -636,9 +638,9 @@ fn test_cose_signature_protected_header_unsupported_alg() {
 fn test_cose_signature_protected_header_unexpected_kid_type() {
     let body_protected_header = make_minimally_valid_cose_sign_protected_header();
     let signature_protected_header = encode_test_protected_header(
-        vec![CborType::Integer(1),
-             CborType::Integer(4)],
-        vec![CborType::SignedInteger(-7),
+        vec![CborType::Integer(COSE_HEADER_ALG),
+             CborType::Integer(COSE_HEADER_KID)],
+        vec![CborType::SignedInteger(COSE_TYPE_ES256),
              CborType::Integer(0)],
     );
     let signature = build_test_cose_signature(signature_protected_header);
@@ -654,10 +656,10 @@ fn test_cose_signature_protected_header_unexpected_kid_type() {
 fn test_cose_signature_protected_header_extra_key() {
     let body_protected_header = make_minimally_valid_cose_sign_protected_header();
     let signature_protected_header = encode_test_protected_header(
-        vec![CborType::Integer(1),
-             CborType::Integer(4),
+        vec![CborType::Integer(COSE_HEADER_ALG),
+             CborType::Integer(COSE_HEADER_KID),
              CborType::Integer(5)],
-        vec![CborType::SignedInteger(-7),
+        vec![CborType::SignedInteger(COSE_TYPE_ES256),
              CborType::Bytes(Vec::new()),
              CborType::Integer(5)],
     );
