@@ -273,7 +273,7 @@ fn build_test_cose_signature(protected_header: Vec<u8>) -> CborType {
 // Helper function to create the minimally-valid COSE_Sign (i.e. "body") protected header.
 fn make_minimally_valid_cose_sign_protected_header() -> Vec<u8> {
     encode_test_protected_header(
-        vec![CborType::Integer(4)],
+        vec![CborType::Integer(COSE_HEADER_KID)],
         vec![CborType::Array(Vec::new())],
     )
 }
