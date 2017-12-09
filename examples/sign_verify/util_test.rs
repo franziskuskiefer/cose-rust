@@ -3,7 +3,7 @@
 use nss;
 use {CoseError, Signature, SignatureAlgorithm, SignatureParameters};
 use std::collections::BTreeMap;
-use cose::cbor::CborType;
+use cbor::CborType;
 use cose::util::get_sig_struct_bytes;
 use cose::decoder::decode_signature;
 use cose::decoder::{COSE_TYPE_ES256, COSE_TYPE_ES384, COSE_TYPE_ES512, COSE_TYPE_PS256};

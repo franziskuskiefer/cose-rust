@@ -30,9 +30,9 @@
 //!     }
 //! }
 //!```
+extern crate moz_cbor as cbor;
 
 pub mod decoder;
-pub mod cbor;
 pub mod util;
 
 /// Errors that can be returned from COSE functions.

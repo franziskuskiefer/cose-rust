@@ -1,3 +1,4 @@
+extern crate moz_cbor as cbor;
 extern crate cose;
 
 #[macro_use(defer)]
