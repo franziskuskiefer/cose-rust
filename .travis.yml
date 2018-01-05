@@ -13,10 +13,10 @@ addons:
       - build-essential
       - libnss3-dev
 
-install:
+#install:
 # Apparently cargo install returns a nonzero exit status if
 # caching succeeds, so just make this always "succeed".
-  - (cargo install rustfmt --force || true)
+#  - (cargo install rustfmt --force || true)
 
 script:
 # The NSS version in Ubuntu is too old. Get a newer one.
@@ -25,8 +25,8 @@ script:
   wget http://de.archive.ubuntu.com/ubuntu/pool/main/n/nspr/libnspr4_4.16-1ubuntu2_amd64.deb
   sudo dpkg -i libnspr4_4.16-1ubuntu2_amd64.deb
   sudo dpkg -i libnss3_3.32-1ubuntu3_amd64.deb
-- |
-  cargo fmt -- --write-mode=diff
+#- |
+#  cargo fmt -- --write-mode=diff
 - |
   cargo build --features "$FEATURES" &&
   cargo test &&
