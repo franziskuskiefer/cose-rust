@@ -28,4 +28,5 @@ script:
   cargo fmt -- --write-mode=diff
 - |
   cargo build --features "$FEATURES" &&
-  cargo test
+  cargo test &&
+  cargo run --example sign_verify
