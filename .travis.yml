@@ -16,7 +16,7 @@ addons:
 install:
 # Apparently cargo install returns a nonzero exit status if
 # caching succeeds, so just make this always "succeed".
-  - (cargo install rustfmt || true)
+  - (cargo install rustfmt --force || true)
 
 script:
 # The NSS version in Ubuntu is too old. Get a newer one.
