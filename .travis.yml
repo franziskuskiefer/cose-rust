@@ -15,7 +15,8 @@ addons:
 
 install:
   - rustup install nightly
-  - which rustfmt || cargo +nightly install rustfmt-nightly --force
+  - rustup uninstall rustfmt
+  - cargo +nightly install rustfmt-nightly
 
 script:
 # The NSS version in Ubuntu is too old. Get a newer one.
