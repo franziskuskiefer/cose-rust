@@ -15,7 +15,7 @@ addons:
 
 install:
   - rustup install nightly
-  - rustup component add --toolchain nightly rustfmt-preview
+  - cargo +nightly install rustfmt-nightly
 
 script:
 # The NSS version in Ubuntu is too old. Get a newer one.
@@ -25,8 +25,8 @@ script:
   sudo dpkg -i libnspr4_4.16-1ubuntu2_amd64.deb
   sudo dpkg -i libnss3_3.32-1ubuntu3_amd64.deb
 - |
-  rustfmt +nightly --force --version &&
-  cargo +nightly fmt -- --write-mode=diff --force
+  rustfmt +nightly --version &&
+  cargo +nightly fmt -- --write-mode=diff
 - |
   cargo build --features "$FEATURES" &&
   cargo test &&
