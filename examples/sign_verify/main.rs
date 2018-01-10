@@ -1,5 +1,5 @@
-extern crate moz_cbor as cbor;
 extern crate cose;
+extern crate moz_cbor as cbor;
 
 #[macro_use(defer)]
 extern crate scopeguard;
@@ -115,8 +115,7 @@ fn test_cose_sign_verify() {
     let payload = b"This is the content.";
 
     // P256
-    let certs: [&[u8]; 2] = [&test::P256_ROOT,
-                             &test::P256_INT];
+    let certs: [&[u8]; 2] = [&test::P256_ROOT, &test::P256_INT];
     let params_vec = vec![P256_PARAMS];
     test_verify(payload, &certs, params_vec);
 
@@ -144,16 +143,14 @@ fn test_cose_sign_verify_modified_payload() {
     let mut payload = String::from_str("This is the content.")
         .unwrap()
         .into_bytes();
-    let certs: [&[u8]; 2] = [&test::P256_ROOT,
-                             &test::P256_INT];
+    let certs: [&[u8]; 2] = [&test::P256_ROOT, &test::P256_INT];
     let params_vec = vec![P256_PARAMS];
     test_verify_modified_payload(&mut payload, &certs, params_vec);
 }
 
 fn test_cose_sign_verify_wrong_cert() {
     let payload = b"This is the content.";
-    let certs: [&[u8]; 2] = [&test::P256_ROOT,
-                             &test::P256_INT];
+    let certs: [&[u8]; 2] = [&test::P256_ROOT, &test::P256_INT];
     let params = SignatureParameters {
         certificate: &test::P384_EE,
         algorithm: SignatureAlgorithm::ES256,
@@ -165,8 +162,7 @@ fn test_cose_sign_verify_wrong_cert() {
 
 fn test_cose_sign_verify_tampered_signature() {
     let payload = b"This is the content.";
-    let certs: [&[u8]; 2] = [&test::P256_ROOT,
-                             &test::P256_INT];
+    let certs: [&[u8]; 2] = [&test::P256_ROOT, &test::P256_INT];
     let params_vec = vec![P256_PARAMS];
     test_verify_modified_signature(payload, &certs, params_vec);
 }
@@ -179,8 +175,7 @@ const RSA_PARAMS: SignatureParameters = SignatureParameters {
 
 fn test_cose_sign_verify_rsa() {
     let payload = b"This is the RSA-signed content.";
-    let certs: [&[u8]; 2] = [&test::RSA_ROOT,
-                             &test::RSA_INT];
+    let certs: [&[u8]; 2] = [&test::RSA_ROOT, &test::RSA_INT];
     let params_vec = vec![RSA_PARAMS];
     test_verify(payload, &certs, params_vec);
 }
@@ -189,28 +184,27 @@ fn test_cose_sign_verify_rsa_modified_payload() {
     let mut payload = String::from_str("This is the RSA-signed content.")
         .unwrap()
         .into_bytes();
-    let certs: [&[u8]; 2] = [&test::RSA_ROOT,
-                             &test::RSA_INT];
+    let certs: [&[u8]; 2] = [&test::RSA_ROOT, &test::RSA_INT];
     let params_vec = vec![RSA_PARAMS];
     test_verify_modified_payload(&mut payload, &certs, params_vec);
 }
 
 fn test_cose_sign_verify_rsa_tampered_signature() {
     let payload = b"This is the RSA-signed content.";
-    let certs: [&[u8]; 2] = [&test::RSA_ROOT,
-                             &test::RSA_INT];
+    let certs: [&[u8]; 2] = [&test::RSA_ROOT, &test::RSA_INT];
     let params_vec = vec![RSA_PARAMS];
     test_verify_modified_signature(payload, &certs, params_vec);
 }
 
 fn test_cose_sign_verify_two_signatures() {
     let payload = b"This is the content.";
-    let certs: [&[u8]; 4] = [&test::P256_ROOT,
-                             &test::P256_INT,
-                             &test::RSA_ROOT,
-                             &test::RSA_INT];
-    let params_vec = vec![P256_PARAMS,
-                          RSA_PARAMS];
+    let certs: [&[u8]; 4] = [
+        &test::P256_ROOT,
+        &test::P256_INT,
+        &test::RSA_ROOT,
+        &test::RSA_INT,
+    ];
+    let params_vec = vec![P256_PARAMS, RSA_PARAMS];
     test_verify(payload, &certs, params_vec);
 }
 
@@ -218,23 +212,25 @@ fn test_cose_sign_verify_two_signatures_tampered_payload() {
     let mut payload = String::from_str("This is the content.")
         .unwrap()
         .into_bytes();
-    let certs: [&[u8]; 4] = [&test::P256_ROOT,
-                             &test::P256_INT,
-                             &test::RSA_ROOT,
-                             &test::RSA_INT];
-    let params_vec = vec![P256_PARAMS,
-                          RSA_PARAMS];
+    let certs: [&[u8]; 4] = [
+        &test::P256_ROOT,
+        &test::P256_INT,
+        &test::RSA_ROOT,
+        &test::RSA_INT,
+    ];
+    let params_vec = vec![P256_PARAMS, RSA_PARAMS];
     test_verify_modified_payload(&mut payload, &certs, params_vec);
 }
 
 fn test_cose_sign_verify_two_signatures_tampered_signature() {
     let payload = b"This is the content.";
-    let certs: [&[u8]; 4] = [&test::P256_ROOT,
-                             &test::P256_INT,
-                             &test::RSA_ROOT,
-                             &test::RSA_INT];
-    let params_vec = vec![P256_PARAMS,
-                          RSA_PARAMS];
+    let certs: [&[u8]; 4] = [
+        &test::P256_ROOT,
+        &test::P256_INT,
+        &test::RSA_ROOT,
+        &test::RSA_INT,
+    ];
+    let params_vec = vec![P256_PARAMS, RSA_PARAMS];
     test_verify_modified_signature(payload, &certs, params_vec);
 }
 

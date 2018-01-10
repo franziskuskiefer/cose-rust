@@ -109,15 +109,13 @@ fn decode_signature_struct(
         &CborType::Integer(COSE_HEADER_ALG),
     )?;
     let signature_algorithm = match signature_algorithm {
-        CborType::SignedInteger(val) => {
-            match val {
-                COSE_TYPE_ES256 => SignatureAlgorithm::ES256,
-                COSE_TYPE_ES384 => SignatureAlgorithm::ES384,
-                COSE_TYPE_ES512 => SignatureAlgorithm::ES512,
-                COSE_TYPE_PS256 => SignatureAlgorithm::PS256,
-                _ => return Err(CoseError::UnexpectedHeaderValue),
-            }
-        }
+        CborType::SignedInteger(val) => match val {
+            COSE_TYPE_ES256 => SignatureAlgorithm::ES256,
+            COSE_TYPE_ES384 => SignatureAlgorithm::ES384,
+            COSE_TYPE_ES512 => SignatureAlgorithm::ES512,
+            COSE_TYPE_PS256 => SignatureAlgorithm::PS256,
+            _ => return Err(CoseError::UnexpectedHeaderValue),
+        },
         _ => return Err(CoseError::UnexpectedType),
     };
 

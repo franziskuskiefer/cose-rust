@@ -57,8 +57,7 @@ pub enum CoseError {
 /// ES512 (ECDSA with P521 and SHA512), and PS256 (RSASSA-PSS with SHA256)
 /// are supported. Note that with PS256, the salt length is defined
 /// to be 32 bytes.
-#[derive(Debug)]
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq)]
 pub enum SignatureAlgorithm {
     ES256,
     ES384,
