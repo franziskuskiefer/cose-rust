@@ -15,8 +15,8 @@ addons:
 
 install:
   - rustup install nightly
-  - cargo uninstall rustfmt
-  - cargo +nightly uninstall rustfmt
+  - cargo uninstall rustfmt || true
+  - cargo +nightly uninstall rustfmt || true
   - cargo +nightly install rustfmt-nightly
 
 script:
