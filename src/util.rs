@@ -17,11 +17,13 @@ pub fn get_sig_struct_bytes(
     protected_signature_header_serialized: CborType,
     payload: &[u8],
 ) -> Vec<u8> {
-    let sig_structure_array: Vec<CborType> = vec![CborType::String(String::from("Signature")),
-                                                  protected_body_header_serialized,
-                                                  protected_signature_header_serialized,
-                                                  CborType::Null,
-                                                  CborType::Bytes(payload.to_vec())];
+    let sig_structure_array: Vec<CborType> = vec![
+        CborType::String(String::from("Signature")),
+        protected_body_header_serialized,
+        protected_signature_header_serialized,
+        CborType::Null,
+        CborType::Bytes(payload.to_vec()),
+    ];
 
     CborType::Array(sig_structure_array).serialize()
 }

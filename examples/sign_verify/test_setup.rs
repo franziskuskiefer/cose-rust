@@ -1,6 +1,6 @@
 use std::os::raw;
 use std::ptr;
-use std::sync::{ONCE_INIT, Once};
+use std::sync::{Once, ONCE_INIT};
 static START: Once = ONCE_INIT;
 
 type SECStatus = raw::c_int;
