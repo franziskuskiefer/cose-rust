@@ -25,7 +25,6 @@ script:
   sudo dpkg -i libnspr4_4.16-1ubuntu2_amd64.deb
   sudo dpkg -i libnss3_3.32-1ubuntu3_amd64.deb
 - |
-  rustfmt +nightly --version &&
   cargo +nightly fmt -- --write-mode=diff
 - |
   cargo build --features "$FEATURES" &&
