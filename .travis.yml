@@ -18,7 +18,7 @@ addons:
 # caching succeeds, so just make this always "succeed".
 #  - (cargo install rustfmt --force || true)
 
-#script:
+script:
 # The NSS version in Ubuntu is too old. Get a newer one.
 #- |
 #  wget http://de.archive.ubuntu.com/ubuntu/pool/main/n/nss/libnss3_3.32-1ubuntu3_amd64.deb
