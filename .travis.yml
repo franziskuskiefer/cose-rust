@@ -1,7 +1,8 @@
-sudo: true
-dist: trusty
+dist: bionic
 language: rust
 cache: cargo
+os:
+  - linux
 rust:
   - stable
   - beta
