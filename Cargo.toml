@@ -3,10 +3,12 @@ name = "cose"
 version = "0.1.4"
 authors = ["Franziskus Kiefer <franziskuskiefer@gmail.com>", "David Keeler <dkeeler@mozilla.com>"]
 description = "Library to use COSE (https://tools.ietf.org/html/rfc8152) in Rust"
+readme = "README.md"
 repository = "https://github.com/franziskuskiefer/cose-rust"
 keywords = ["cose", "jose"]
 license = "MPL-2.0"
 build = "build.rs"
+exclude = [".travis.yml"]
 
 [dependencies]
 moz_cbor = "0.1.0"
