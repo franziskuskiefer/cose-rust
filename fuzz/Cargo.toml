@@ -1,0 +1,26 @@
+
+[package]
+name = "cose-fuzz"
+version = "0.0.0"
+authors = ["Automatically generated"]
+publish = false
+edition = "2018"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.3"
+
+[dependencies.cose]
+path = ".."
+
+# Prevent this from interfering with workspaces
+[workspace]
+members = ["."]
+
+[[bin]]
+name = "fuzz_decode_signature"
+path = "fuzz_targets/fuzz_decode_signature.rs"
+test = false
+doc = false
