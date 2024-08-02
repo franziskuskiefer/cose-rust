@@ -20,3 +20,7 @@ path = "src/cose.rs"
 
 [features]
 default = []
+
+[[example]]
+name = "sign_verify"
+path = "examples/sign_verify/main.rs"
